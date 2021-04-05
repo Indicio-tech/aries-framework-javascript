@@ -307,6 +307,9 @@ export class ProofService extends EventEmitter {
     let proofRecord: ProofRecord;
     const { message: proofRequestMessage, connection } = messageContext;
 
+    this.logger.debug('Message', proofRequestMessage);
+    this.logger.debug('Connectioon', connection);
+
     // Assert connection
     connection?.assertReady();
     if (!connection) {

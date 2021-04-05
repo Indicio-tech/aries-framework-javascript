@@ -9,7 +9,7 @@ services:
     networks:
       - hyperledger
     ports:
-      - 3001:3001
+      - 3008:3008
 
   bob-mediator:
     build: ..
@@ -19,7 +19,7 @@ services:
     networks:
       - hyperledger
     ports:
-      - 3002:3002
+      - 3009:3009
 
 networks:
   hyperledger:

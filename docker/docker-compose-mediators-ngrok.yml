@@ -11,7 +11,7 @@ services:
 
   alice-ngrok:
     image: wernight/ngrok
-    command: ngrok http -bind-tls=true --log stdout alice-mediator:3001
+    command: ngrok http -bind-tls=true --log stdout alice-mediator:3008
     networks:
       - hyperledger
 
@@ -23,7 +23,7 @@ services:
 
   bob-ngrok:
     image: wernight/ngrok
-    command: ngrok http -bind-tls=true --log stdout bob-mediator:3002
+    command: ngrok http -bind-tls=true --log stdout bob-mediator:3009
     networks:
       - hyperledger
 

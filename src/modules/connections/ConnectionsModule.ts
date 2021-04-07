@@ -17,6 +17,7 @@ import {
   TrustPingMessageHandler,
   TrustPingResponseMessageHandler,
 } from './handlers';
+import { ReturnRouteTypes } from '../../decorators/transport/TransportDecorator';
 
 export class ConnectionsModule {
   private agentConfig: AgentConfig;
@@ -136,6 +137,7 @@ export class ConnectionsModule {
     }
 
     const outbound = createOutboundMessage(connectionRecord, message, connectionRecord.invitation);
+    outbound.payload.setReturnRouting(ReturnRouteTypes.all);
     await this.messageSender.sendMessage(outbound);
 
     return connectionRecord;
@@ -211,6 +213,16 @@ export class ConnectionsModule {
 
   public async findConnectionByTheirKey(verkey: Verkey): Promise<ConnectionRecord | null> {
     return this.connectionService.findByTheirKey(verkey);
+  }
+
+  public async sendTrustPing(connectionId: string, responseRequested:boolean = false): Promise<ConnectionRecord> {
+    const { message, connectionRecord: connectionRecord } = await this.connectionService.createTrustPing(connectionId, responseRequested);
+
+    const outbound = createOutboundMessage(connectionRecord, message);
+    outbound.payload.setReturnRouting(ReturnRouteTypes.all);
+    await this.messageSender.sendMessage(outbound);
+
+    return connectionRecord;
   }
 
   private registerHandlers(dispatcher: Dispatcher) {

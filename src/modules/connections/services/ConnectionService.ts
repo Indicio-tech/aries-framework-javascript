@@ -293,7 +293,7 @@ export class ConnectionService extends EventEmitter {
    * @param connectionId the id of the connection for which to create a trust ping message
    * @returns outbound message contaning trust ping message
    */
-  public async createTrustPing(connectionId: string): Promise<ConnectionProtocolMsgReturnType<TrustPingMessage>> {
+  public async createTrustPing(connectionId: string, responseRequested:boolean = false): Promise<ConnectionProtocolMsgReturnType<TrustPingMessage>> {
     const connectionRecord = await this.connectionRepository.find(connectionId);
 
     connectionRecord.assertState([ConnectionState.Responded, ConnectionState.Complete]);
@@ -302,7 +302,7 @@ export class ConnectionService extends EventEmitter {
     //  - create ack message
     //  - allow for options
     //  - maybe this shouldn't be in the connection service?
-    const trustPing = new TrustPingMessage();
+    const trustPing = new TrustPingMessage({responseRequested: responseRequested});
 
     await this.updateState(connectionRecord, ConnectionState.Complete);
 

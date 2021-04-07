@@ -3,6 +3,7 @@ import { AgentConfig } from '../../../agent/AgentConfig';
 import { createOutboundMessage } from '../../../agent/helpers';
 import { ConnectionService } from '../services/ConnectionService';
 import { ConnectionResponseMessage } from '../messages';
+import { ReturnRouteTypes } from '../../../decorators/transport/TransportDecorator';
 
 export class ConnectionResponseHandler implements Handler {
   private connectionService: ConnectionService;
@@ -26,7 +27,10 @@ export class ConnectionResponseHandler implements Handler {
     // if auto accept is enable
     if (messageContext.connection?.autoAcceptConnection ?? this.agentConfig.autoAcceptConnections) {
       const { message } = await this.connectionService.createTrustPing(messageContext.connection.id);
-      return createOutboundMessage(messageContext.connection, message);
+      let outbound = createOutboundMessage(messageContext.connection, message);
+      outbound.payload.setReturnRouting(ReturnRouteTypes.all);
+
+      return outbound
     }
   }
 }

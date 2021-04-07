@@ -7,20 +7,24 @@ import { Constructor } from '../utils/mixins';
 import { InboundMessageContext } from './models/InboundMessageContext';
 import { JsonTransformer } from '../utils/JsonTransformer';
 import { HttpTransport, TransportService } from './TransportService';
+import { Logger } from '../logger';
+import { AgentConfig } from './AgentConfig';
 
 class MessageSender {
+  private config: AgentConfig;
   private envelopeService: EnvelopeService;
   private transportService: TransportService;
-  private outboundTransporter: OutboundTransporter;
+  private logger: Logger;
 
   public constructor(
     envelopeService: EnvelopeService,
     transportService: TransportService,
-    outboundTransporter: OutboundTransporter
+    config: AgentConfig,
   ) {
+    this.config = config
     this.envelopeService = envelopeService;
     this.transportService = transportService;
-    this.outboundTransporter = outboundTransporter;
+    this.logger = this.config.logger;
   }
 
   public async packMessage(outboundMessage: OutboundMessage): Promise<OutboundPackage> {
@@ -29,41 +33,39 @@ class MessageSender {
 
   public async sendMessage(outboundMessage: OutboundMessage): Promise<void> {
     const outboundPackage = await this.envelopeService.packMessage(outboundMessage);
-    const transport = this.transportService.getTransport(outboundMessage.connection.id);
-    if (transport) {
-      outboundPackage.transport = transport;
-    } else {
-      outboundPackage.transport = new HttpTransport(outboundMessage.endpoint);
-    }
-    await this.outboundTransporter.sendMessage(outboundPackage, false);
+    this.logger.debug("Sending Message, outboundMessage:", outboundMessage);
+
+    let transport = this.transportService.getTransport(outboundPackage.endpoint)
+
+    await transport.sendMessage(outboundPackage);
   }
 
-  public async sendAndReceiveMessage<T extends AgentMessage>(
-    outboundMessage: OutboundMessage,
-    ReceivedMessageClass: Constructor<T>
-  ): Promise<InboundMessageContext<T>> {
-    outboundMessage.payload.setReturnRouting(ReturnRouteTypes.all);
+  // public async sendAndReceiveMessage<T extends AgentMessage>(
+  //   outboundMessage: OutboundMessage,
+  //   ReceivedMessageClass: Constructor<T>
+  // ): Promise<InboundMessageContext<T>> {
+  //   outboundMessage.payload.setReturnRouting(ReturnRouteTypes.all);
 
-    const outboundPackage = await this.envelopeService.packMessage(outboundMessage);
-    const transport = this.transportService.getTransport(outboundMessage.connection.id);
-    if (transport) {
-      outboundPackage.transport = transport;
-    } else {
-      outboundPackage.transport = new HttpTransport(outboundMessage.endpoint);
-    }
-    const inboundPackedMessage = await this.outboundTransporter.sendMessage(outboundPackage, true);
-    const inboundUnpackedMessage = await this.envelopeService.unpackMessage(inboundPackedMessage);
+  //   const outboundPackage = await this.envelopeService.packMessage(outboundMessage);
+  //   const transport = this.transportService.getTransport(outboundMessage.connection.id);
+  //   if (transport) {
+  //     outboundPackage.transport = transport;
+  //   } else {
+  //     outboundPackage.transport = new HttpTransport(outboundMessage.endpoint);
+  //   }
+  //   const inboundPackedMessage = await this.transportService.sendMessage(outboundPackage, true);
+  //   const inboundUnpackedMessage = await this.envelopeService.unpackMessage(inboundPackedMessage);
 
-    const message = JsonTransformer.fromJSON(inboundUnpackedMessage.message, ReceivedMessageClass);
+  //   const message = JsonTransformer.fromJSON(inboundUnpackedMessage.message, ReceivedMessageClass);
 
-    const messageContext = new InboundMessageContext(message, {
-      connection: outboundMessage.connection,
-      recipientVerkey: inboundUnpackedMessage.recipient_verkey,
-      senderVerkey: inboundUnpackedMessage.sender_verkey,
-    });
+  //   const messageContext = new InboundMessageContext(message, {
+  //     connection: outboundMessage.connection,
+  //     recipientVerkey: inboundUnpackedMessage.recipient_verkey,
+  //     senderVerkey: inboundUnpackedMessage.sender_verkey,
+  //   });
 
-    return messageContext;
-  }
+  //   return messageContext;
+  // }
 }
 
 export { MessageSender };

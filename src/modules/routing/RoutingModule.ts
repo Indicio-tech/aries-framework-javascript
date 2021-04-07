@@ -46,79 +46,79 @@ export class RoutingModule {
     this.registerHandlers(dispatcher);
   }
 
-  public async provision(mediatorConfiguration: MediatorConfiguration) {
-    let provisioningRecord = await this.provisioningService.find();
+  // public async provision(mediatorConfiguration: MediatorConfiguration) {
+  //   let provisioningRecord = await this.provisioningService.find();
 
-    if (!provisioningRecord) {
-      this.logger.info('No provision record found. Creating connection with mediator.');
-      const { verkey, invitationUrl, alias = 'Mediator' } = mediatorConfiguration;
-      const mediatorInvitation = await ConnectionInvitationMessage.fromUrl(invitationUrl);
+  //   if (!provisioningRecord) {
+  //     this.logger.info('No provision record found. Creating connection with mediator.');
+  //     const { verkey, invitationUrl, alias = 'Mediator' } = mediatorConfiguration;
+  //     const mediatorInvitation = await ConnectionInvitationMessage.fromUrl(invitationUrl);
 
-      const connection = await this.connectionService.processInvitation(mediatorInvitation, { alias });
+  //     const connection = await this.connectionService.processInvitation(mediatorInvitation, { alias });
 
-      const { transport } = mediatorConfiguration;
-      if (transport instanceof WebSocketTransport) {
-        this.transportService.saveTransport(connection.id, transport);
-      }
+  //     const { transport } = mediatorConfiguration;
+  //     if (transport instanceof WebSocketTransport) {
+  //       this.transportService.saveTransport(connection.id, transport);
+  //     }
 
-      const {
-        message: connectionRequest,
-        connectionRecord: connectionRecord,
-      } = await this.connectionService.createRequest(connection.id);
-      const connectionResponse = await this.messageSender.sendAndReceiveMessage(
-        createOutboundMessage(connectionRecord, connectionRequest, connectionRecord.invitation),
-        ConnectionResponseMessage
-      );
-      await this.connectionService.processResponse(connectionResponse);
-      const { message: trustPing } = await this.connectionService.createTrustPing(connectionRecord.id);
-      await this.messageSender.sendMessage(createOutboundMessage(connectionRecord, trustPing));
+  //     const {
+  //       message: connectionRequest,
+  //       connectionRecord: connectionRecord,
+  //     } = await this.connectionService.createRequest(connection.id);
+  //     const connectionResponse = await this.messageSender.sendAndReceiveMessage(
+  //       createOutboundMessage(connectionRecord, connectionRequest, connectionRecord.invitation),
+  //       ConnectionResponseMessage
+  //     );
+  //     await this.connectionService.processResponse(connectionResponse);
+  //     const { message: trustPing } = await this.connectionService.createTrustPing(connectionRecord.id);
+  //     await this.messageSender.sendMessage(createOutboundMessage(connectionRecord, trustPing));
 
-      const provisioningProps = {
-        mediatorConnectionId: connectionRecord.id,
-        mediatorPublicVerkey: verkey,
-      };
-      provisioningRecord = await this.provisioningService.create(provisioningProps);
-      this.logger.debug('Provisioning record has been saved.');
-    }
+  //     const provisioningProps = {
+  //       mediatorConnectionId: connectionRecord.id,
+  //       mediatorPublicVerkey: verkey,
+  //     };
+  //     provisioningRecord = await this.provisioningService.create(provisioningProps);
+  //     this.logger.debug('Provisioning record has been saved.');
+  //   }
 
-    this.logger.debug('Provisioning record:', provisioningRecord);
+  //   this.logger.debug('Provisioning record:', provisioningRecord);
 
-    const agentConnectionAtMediator = await this.connectionService.find(provisioningRecord.mediatorConnectionId);
+  //   const agentConnectionAtMediator = await this.connectionService.find(provisioningRecord.mediatorConnectionId);
 
-    if (!agentConnectionAtMediator) {
-      throw new Error('Connection not found!');
-    }
-    this.logger.debug('agentConnectionAtMediator', agentConnectionAtMediator);
+  //   if (!agentConnectionAtMediator) {
+  //     throw new Error('Connection not found!');
+  //   }
+  //   this.logger.debug('agentConnectionAtMediator', agentConnectionAtMediator);
 
-    agentConnectionAtMediator.assertState(ConnectionState.Complete);
+  //   agentConnectionAtMediator.assertState(ConnectionState.Complete);
 
-    this.agentConfig.establishInbound({
-      verkey: provisioningRecord.mediatorPublicVerkey,
-      connection: agentConnectionAtMediator,
-    });
+  //   this.agentConfig.establishInbound({
+  //     verkey: provisioningRecord.mediatorPublicVerkey,
+  //     connection: agentConnectionAtMediator,
+  //   });
 
-    return agentConnectionAtMediator;
-  }
+  //   return agentConnectionAtMediator;
+  // }
 
-  public async downloadMessages() {
-    const inboundConnection = this.getInboundConnection();
-    if (inboundConnection) {
-      const outboundMessage = await this.messagePickupService.batchPickup(inboundConnection);
-      const batchResponse = await this.messageSender.sendAndReceiveMessage(outboundMessage, BatchMessage);
+  // public async downloadMessages() {
+  //   const inboundConnection = this.getInboundConnection();
+  //   if (inboundConnection) {
+  //     const outboundMessage = await this.messagePickupService.batchPickup(inboundConnection);
+  //     const batchResponse = await this.messageSender.sendAndReceiveMessage(outboundMessage, BatchMessage);
 
-      // TODO: do something about the different types of message variable all having a different purpose
-      return batchResponse.message.messages.map(msg => msg.message);
-    }
-    return [];
-  }
+  //     // TODO: do something about the different types of message variable all having a different purpose
+  //     return batchResponse.message.messages.map(msg => msg.message);
+  //   }
+  //   return [];
+  // }
 
-  public getInboundConnection() {
-    return this.agentConfig.inboundConnection;
-  }
+  // public getInboundConnection() {
+  //   return this.agentConfig.inboundConnection;
+  // }
 
-  public getRoutingTable() {
-    return this.providerRoutingService.getRoutes();
-  }
+  // public getRoutingTable() {
+  //   return this.providerRoutingService.getRoutes();
+  // }
 
   private registerHandlers(dispatcher: Dispatcher) {
     dispatcher.registerHandler(new KeylistUpdateHandler(this.providerRoutingService));

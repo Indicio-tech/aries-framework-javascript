@@ -56,8 +56,6 @@ export class Agent {
   protected credentialRepository: Repository<CredentialRecord>;
   protected proofRepository: Repository<ProofRecord>;
 
-  public inboundTransporter: InboundTransporter;
-
   public connections!: ConnectionsModule;
   public proofs!: ProofsModule;
   public routing!: RoutingModule;
@@ -67,8 +65,8 @@ export class Agent {
 
   public constructor(
     initialConfig: InitConfig,
-    inboundTransporter: InboundTransporter,
-    outboundTransporter: OutboundTransporter,
+    //inboundTransporter: InboundTransporter,
+    //outboundTransporter: OutboundTransporter,
     messageRepository?: MessageRepository
   ) {
     this.agentConfig = new AgentConfig(initialConfig);
@@ -83,11 +81,9 @@ export class Agent {
     });
     this.wallet = new IndyWallet(this.agentConfig);
     const envelopeService = new EnvelopeService(this.wallet, this.agentConfig);
-    this.transportService = new TransportService();
 
-    this.messageSender = new MessageSender(envelopeService, this.transportService, outboundTransporter);
-    this.dispatcher = new Dispatcher(this.messageSender);
-    this.inboundTransporter = inboundTransporter;
+    
+    //this.inboundTransporter = inboundTransporter;
 
     const storageService = new IndyStorageService(this.wallet);
     this.basicMessageRepository = new Repository<BasicMessageRecord>(BasicMessageRecord, storageService);
@@ -100,7 +96,6 @@ export class Agent {
     this.connectionService = new ConnectionService(this.wallet, this.agentConfig, this.connectionRepository);
     this.basicMessageService = new BasicMessageService(this.basicMessageRepository);
     this.providerRoutingService = new ProviderRoutingService();
-    this.consumerRoutingService = new ConsumerRoutingService(this.messageSender, this.agentConfig);
     this.trustPingService = new TrustPingService();
     this.messagePickupService = new MessagePickupService(messageRepository);
     this.ledgerService = new LedgerService(this.wallet, this.agentConfig);
@@ -113,13 +108,20 @@ export class Agent {
     );
     this.proofService = new ProofService(this.proofRepository, this.ledgerService, this.wallet, this.agentConfig);
 
+
+
+    this.transportService = new TransportService(this.agentConfig);
+    this.messageSender = new MessageSender(envelopeService, this.transportService, this.agentConfig);
+    this.dispatcher = new Dispatcher(this.messageSender);
+
     this.messageReceiver = new MessageReceiver(
       this.agentConfig,
       envelopeService,
-      this.transportService,
       this.connectionService,
       this.dispatcher
     );
+
+    this.consumerRoutingService = new ConsumerRoutingService(this.messageSender, this.agentConfig);
 
     this.registerModules();
   }
@@ -141,7 +143,7 @@ export class Agent {
       });
     }
 
-    return this.inboundTransporter.start(this);
+    //return this.inboundTransporter.start(this);
   }
 
   public get publicDid() {
@@ -153,7 +155,7 @@ export class Agent {
   }
 
   public async receiveMessage(inboundPackedMessage: unknown, transport?: Transport) {
-    return await this.messageReceiver.receiveMessage(inboundPackedMessage, transport);
+    return await this.messageReceiver.receiveMessage(inboundPackedMessage);
   }
 
   public async closeAndDeleteWallet() {
@@ -162,6 +164,8 @@ export class Agent {
   }
 
   protected registerModules() {
+    this.transportService.registerMessageProcessors(this.messageReceiver, this.messageSender)
+
     this.connections = new ConnectionsModule(
       this.dispatcher,
       this.agentConfig,

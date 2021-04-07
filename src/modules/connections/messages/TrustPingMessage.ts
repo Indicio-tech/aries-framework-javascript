@@ -50,5 +50,5 @@ export class TrustPingMessage extends AgentMessage {
 
   @IsBoolean()
   @Expose({ name: 'response_requested' })
-  public responseRequested = true;
+  public responseRequested = false;
 }

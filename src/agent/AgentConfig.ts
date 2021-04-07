@@ -72,7 +72,8 @@ export class AgentConfig {
 
     // If we still don't have an endpoint, return didcomm:transport/queue
     // https://github.com/hyperledger/aries-rfcs/issues/405#issuecomment-582612875
-    return 'didcomm:transport/queue';
+   //return 'didcomm:transport/queue';
+   return '';
   }
 
   public getRoutingKeys() {

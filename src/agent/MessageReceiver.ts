@@ -14,7 +14,7 @@ import { Transport, TransportService } from './TransportService';
 class MessageReceiver {
   private config: AgentConfig;
   private envelopeService: EnvelopeService;
-  private transportService: TransportService;
+  //private transportService: TransportService;
   private connectionService: ConnectionService;
   private dispatcher: Dispatcher;
   private logger: Logger;
@@ -22,13 +22,13 @@ class MessageReceiver {
   public constructor(
     config: AgentConfig,
     envelopeService: EnvelopeService,
-    transportService: TransportService,
+    //transportService: TransportService,
     connectionService: ConnectionService,
     dispatcher: Dispatcher
   ) {
     this.config = config;
     this.envelopeService = envelopeService;
-    this.transportService = transportService;
+    //this.transportService = transportService;
     this.connectionService = connectionService;
     this.dispatcher = dispatcher;
     this.logger = this.config.logger;
@@ -40,7 +40,7 @@ class MessageReceiver {
    *
    * @param inboundPackedMessage the message to receive and handle
    */
-  public async receiveMessage(inboundPackedMessage: unknown, transport?: Transport) {
+  public async receiveMessage(inboundPackedMessage: unknown) {
     if (typeof inboundPackedMessage !== 'object' || inboundPackedMessage == null) {
       throw new Error('Invalid message received. Message should be object');
     }
@@ -65,11 +65,11 @@ class MessageReceiver {
         );
       }
 
-      if (connection) {
-        if (transport) {
-          this.transportService.saveTransport(connection.id, transport);
-        }
-      }
+      // if (connection) {
+      //   if (transport) {
+      //     this.transportService.saveTransport(connection.id, transport);
+      //   }
+      // }
     }
 
     this.logger.info(`Received message with type '${unpackedMessage.message['@type']}'`, unpackedMessage.message);

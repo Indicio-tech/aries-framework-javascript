@@ -14,7 +14,7 @@ export function createOutboundMessage<T extends AgentMessage = AgentMessage>(
     // When invitation uses DID
     return {
       connection,
-      endpoint: invitation.serviceEndpoint,
+      endpoint: invitation.serviceEndpoint!,
       payload,
       recipientKeys: invitation.recipientKeys || [],
       routingKeys: invitation.routingKeys || [],
@@ -28,7 +28,22 @@ export function createOutboundMessage<T extends AgentMessage = AgentMessage>(
     throw new Error(`DidDoc for connection with verkey ${connection.verkey} not found!`);
   }
 
-  const [service] = theirDidDoc.getServicesByClassType(IndyAgentService);
+  const services = theirDidDoc.getServicesByClassType(IndyAgentService);
+  let service = services[0]
+  for (var i = 0; i < services.length; i++) {
+    let potentialService = services[i]
+    let potentialServiceTransport = new URL(potentialService.serviceEndpoint)
+
+    if (potentialService.priority < service.priority) {
+      service = potentialService
+    } else if (
+      potentialService.priority === service.priority &&
+      (potentialServiceTransport.protocol === 'ws:' ||
+        potentialServiceTransport.protocol === 'wss:')
+    ) {
+      service = potentialService
+    }
+  }
 
   return {
     connection,

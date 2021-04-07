@@ -11,7 +11,7 @@ export class DataTransferService extends EventEmitter {
   public async createProvideData(
     dataToSend: any,
     goalCode: string,
-    description: string = 'Transfer of Data'
+    description = 'Transfer of Data'
   ): Promise<DataTransferProvideDataMessage> {
     const attachment = new Attachment({
       description: description,

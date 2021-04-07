@@ -1,21 +1,26 @@
+import { ReturnRouteTypes } from "../decorators/transport/TransportDecorator";
 import { Logger } from "../logger";
+import { ConnectionService } from "../modules/connections";
 import { OutboundPackage } from "../types";
 import { AgentConfig } from "./AgentConfig";
+import { createOutboundMessage } from "./helpers";
 import { MessageReceiver } from "./MessageReceiver";
 import { MessageSender } from "./MessageSender";
 
 export class TransportService {
   private agentConfig:AgentConfig;
   private logger:Logger
-  
+  private connectionService:ConnectionService
+
   private transportTable: TransportTable = {};
 
   private messageSender!:MessageSender
   private messageReceiver!:MessageReceiver
 
-  constructor(agentConfig:AgentConfig){
+  constructor(agentConfig:AgentConfig, connectionService:ConnectionService){
     this.agentConfig = agentConfig;
     this.logger = this.agentConfig.logger
+    this.connectionService = connectionService;
   }
 
   public registerMessageProcessors(messageReceiver:MessageReceiver, messageSender:MessageSender):void {
@@ -23,7 +28,7 @@ export class TransportService {
     this.messageReceiver = messageReceiver;
   }
 
-  public getTransport(endpoint: string): Transport {
+  public getTransport(endpoint: string, connectionId:string): Transport {
     //If we have a valid transport for this endpoint, use it
     const transportIDsForEndpoint = Object.keys(this.transportTable).filter(key => key === endpoint)
     
@@ -39,12 +44,12 @@ export class TransportService {
     
     //TODO: Replace with fancy transport class detector
     if(protocol === 'ws:' || protocol === 'wss:'){
-      this.transportTable[endpoint] = new WebSocketTransport(endpoint, this.logger, this.messageReceiver, this);
+      this.transportTable[endpoint] = new WebSocketTransport(endpoint, this.logger, this.messageReceiver, this, connectionId);
 
       return this.transportTable[endpoint];
     } 
     else if(protocol === 'http:' || protocol === 'https:'){
-      return new HttpTransport(endpoint, this.logger, this.messageReceiver, this);
+      return new HttpTransport(endpoint, this.logger, this.messageReceiver, this, connectionId);
     }
     else{
       this.logger.error(`Unidentified procotol type: '${protocol}'`)
@@ -52,12 +57,18 @@ export class TransportService {
     }
   }
 
-  public removeTransport(endpoint: string) {
+  public async removeTransport(endpoint: string, connectionId:string) {
     this.logger.debug(`Removing Transport with endpoint '${endpoint}'`)
 
     delete this.transportTable[endpoint]
 
     this.logger.debug("Transport Table:", this.transportTable)
+
+    const { message, connectionRecord: connectionRecord } = await this.connectionService.createTrustPing(connectionId, false);
+
+    const outbound = createOutboundMessage(connectionRecord, message);
+    outbound.payload.setReturnRouting(ReturnRouteTypes.all);
+    await this.messageSender.sendMessage(outbound);
   }
 }
 
@@ -69,6 +80,7 @@ export type TransportType = 'ws' | 'http';
 
 export interface Transport {
   type: TransportType;
+  endpoint: string;
 
   sendMessage(outboundPackage: OutboundPackage): Promise<void>
 }
@@ -81,12 +93,14 @@ export class WebSocketTransport implements Transport {
   public type: TransportType = 'ws';
   public ws: WebSocket;
   public endpoint: string;
+  public connectionId: string;
 
-  public constructor(endpoint: string, logger:Logger, messageReceiver:MessageReceiver, transportService:TransportService) {
+  public constructor(endpoint: string, logger:Logger, messageReceiver:MessageReceiver, transportService:TransportService, connectionId: string) {
     this.logger = logger
     this.messageReceiver = messageReceiver;
     this.endpoint = endpoint;
     this.transportService = transportService
+    this.connectionId = connectionId;
 
     this.logger.debug(`Opening Websocket with '${endpoint}'`)
     this.ws = new WebSocket(endpoint)
@@ -98,7 +112,7 @@ export class WebSocketTransport implements Transport {
     this.ws.onclose = async (event:CloseEvent) => {
       this.logger.debug(`WebSocket '${endpoint}' closed with event:`, event)
 
-      this.transportService.removeTransport(this.endpoint)
+      this.transportService.removeTransport(this.endpoint, this.connectionId)
     }
 
     this.ws.onmessage = async (event:MessageEvent) => {
@@ -144,12 +158,14 @@ export class HttpTransport implements Transport {
 
   public type: TransportType = 'http';
   public endpoint: string;
+  public connectionId: string
 
-  public constructor(endpoint: string, logger:Logger, messageReceiver:MessageReceiver, transportService:TransportService) {
+  public constructor(endpoint: string, logger:Logger, messageReceiver:MessageReceiver, transportService:TransportService, connectionId: string) {
     this.logger = logger
     this.messageReceiver = messageReceiver;
     this.endpoint = endpoint;
     this.transportService = transportService
+    this.connectionId = connectionId;
   }
 
   public async sendMessage(outboundPackage: OutboundPackage): Promise<void> {

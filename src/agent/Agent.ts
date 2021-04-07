@@ -110,7 +110,7 @@ export class Agent {
 
 
 
-    this.transportService = new TransportService(this.agentConfig);
+    this.transportService = new TransportService(this.agentConfig, this.connectionService);
     this.messageSender = new MessageSender(envelopeService, this.transportService, this.agentConfig);
     this.dispatcher = new Dispatcher(this.messageSender);
 

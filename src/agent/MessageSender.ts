@@ -35,7 +35,7 @@ class MessageSender {
     const outboundPackage = await this.envelopeService.packMessage(outboundMessage);
     this.logger.debug("Sending Message, outboundMessage:", outboundMessage);
 
-    let transport = this.transportService.getTransport(outboundPackage.endpoint)
+    let transport = this.transportService.getTransport(outboundPackage.endpoint, outboundPackage.connection.id)
 
     await transport.sendMessage(outboundPackage);
   }

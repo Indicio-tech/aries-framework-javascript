@@ -31,6 +31,8 @@ import { ProofsModule } from '../modules/proofs/ProofsModule'
 import { RoutingModule } from '../modules/routing/RoutingModule'
 import { BasicMessagesModule } from '../modules/basic-messages/BasicMessagesModule'
 import { LedgerModule } from '../modules/ledger/LedgerModule'
+import { DataTransferService } from '../modules/data-transfer'
+import { DataTransfer } from '../modules/data-transfer/DataTransferModule'
 
 export class Agent {
   protected logger: Logger
@@ -52,6 +54,7 @@ export class Agent {
   protected provisioningService: ProvisioningService
   protected ledgerService: LedgerService
   protected credentialService: CredentialService
+  protected dataTransferService: DataTransferService
   protected basicMessageRepository: Repository<BasicMessageRecord>
   protected connectionRepository: Repository<ConnectionRecord>
   protected provisioningRepository: Repository<ProvisioningRecord>
@@ -64,6 +67,7 @@ export class Agent {
   public basicMessages!: BasicMessagesModule
   public ledger!: LedgerModule
   public credentials!: CredentialsModule
+  public dataTransfer!: DataTransfer
 
   public constructor(initialConfig: InitConfig, messageRepository?: MessageRepository) {
     this.agentConfig = new AgentConfig(initialConfig)
@@ -110,6 +114,7 @@ export class Agent {
       this.agentConfig
     )
     this.proofService = new ProofService(this.proofRepository, this.ledgerService, this.wallet, this.agentConfig)
+    this.dataTransferService = new DataTransferService()
 
     this.messageReceiver = new MessageReceiver(
       this.agentConfig,
@@ -201,5 +206,7 @@ export class Agent {
     this.basicMessages = new BasicMessagesModule(this.dispatcher, this.basicMessageService, this.messageSender)
 
     this.ledger = new LedgerModule(this.wallet, this.ledgerService)
+
+    this.dataTransfer = new DataTransfer(this.agentConfig, this.messageSender, this.dataTransferService, this.connectionService)
   }
 }

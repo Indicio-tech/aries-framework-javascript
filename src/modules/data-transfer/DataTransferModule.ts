@@ -15,7 +15,7 @@ export class DataTransfer {
 
   private logger: Logger
 
-  constructor(
+  public constructor(
     agentConfig: AgentConfig,
     messageSender: MessageSender,
     dataTransferService: DataTransferService,

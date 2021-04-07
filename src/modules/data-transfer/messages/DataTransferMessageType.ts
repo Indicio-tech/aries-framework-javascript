@@ -1,3 +1,3 @@
 export enum DataTransferMessageType {
-  ProvideData = 'didcomm.org/datatransfer/0.1/provide-data',
+  ProvideData = 'https://didcomm.org/data-transfer/0.1/provide-data',
 }

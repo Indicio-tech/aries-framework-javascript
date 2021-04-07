@@ -26,6 +26,8 @@ export class DataTransferProvideDataMessage extends AgentMessage {
 
     if (options) {
       this.id = options.id || this.generateId()
+      this.goal_code = options.goal_code
+      this.attachments = options.attachments
     }
   }
 

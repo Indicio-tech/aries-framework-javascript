@@ -33,18 +33,17 @@ export class DataTransferProvideDataMessage extends AgentMessage {
   public readonly type = DataTransferProvideDataMessage.type
   public static readonly type = DataTransferMessageType.ProvideData
 
-  
   @IsString()
   public goal_code!: string
 
-   /**
+  /**
    * An array of attachments containing data.
    */
-   @Expose({ name: 'data~attach' })
-   @Type(() => Attachment)
-   @IsArray()
-   @ValidateNested({
-     each: true,
-   })
-   public attachments!: Attachment[]
+  @Expose({ name: 'data~attach' })
+  @Type(() => Attachment)
+  @IsArray()
+  @ValidateNested({
+    each: true,
+  })
+  public attachments!: Attachment[]
 }

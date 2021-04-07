@@ -194,6 +194,11 @@ export class Agent {
 
     this.ledger = new LedgerModule(this.wallet, this.ledgerService)
 
-    this.dataTransfer = new DataTransfer(this.agentConfig, this.messageSender, this.dataTransferService, this.connectionService)
+    this.dataTransfer = new DataTransfer(
+      this.agentConfig,
+      this.messageSender,
+      this.dataTransferService,
+      this.connectionService
+    )
   }
 }

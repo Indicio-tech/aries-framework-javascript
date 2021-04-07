@@ -8,34 +8,38 @@ import { ConnectionService } from '../connections'
 import { DataTransferProvideDataMessage } from './messages'
 
 export class DataTransfer {
-    private agentConfig: AgentConfig
-    private messageSender: MessageSender
-    private dataTransferService: DataTransferService
-    private connectionService: ConnectionService
+  private agentConfig: AgentConfig
+  private messageSender: MessageSender
+  private dataTransferService: DataTransferService
+  private connectionService: ConnectionService
 
-    private logger: Logger
+  private logger: Logger
 
-    constructor(
-        agentConfig:AgentConfig,
-        messageSender: MessageSender,
-        dataTransferService: DataTransferService,
-        connectionService: ConnectionService,
-    ){
-        this.agentConfig = agentConfig;
-        this.messageSender = messageSender
-        this.dataTransferService = dataTransferService
-        this.logger = this.agentConfig.logger
-        this.connectionService = connectionService
-    }
+  constructor(
+    agentConfig: AgentConfig,
+    messageSender: MessageSender,
+    dataTransferService: DataTransferService,
+    connectionService: ConnectionService
+  ) {
+    this.agentConfig = agentConfig
+    this.messageSender = messageSender
+    this.dataTransferService = dataTransferService
+    this.logger = this.agentConfig.logger
+    this.connectionService = connectionService
+  }
 
-    public async sendData(dataToSend:any, connectionId:string, goalCode:string, description?:string):Promise<void> {
-        this.logger.debug(`Sending Data to Connection ${connectionId}`)
+  public async sendData(dataToSend: any, connectionId: string, goalCode: string, description?: string): Promise<void> {
+    this.logger.debug(`Sending Data to Connection ${connectionId}`)
 
-        const connection = await this.connectionService.getById(connectionId)
+    const connection = await this.connectionService.getById(connectionId)
 
-        const message:DataTransferProvideDataMessage = await this.dataTransferService.createProvideData(dataToSend, goalCode, description)
+    const message: DataTransferProvideDataMessage = await this.dataTransferService.createProvideData(
+      dataToSend,
+      goalCode,
+      description
+    )
 
-        const outbound = createOutboundMessage(connection, message)
-        await this.messageSender.sendMessage(outbound)
-    }
+    const outbound = createOutboundMessage(connection, message)
+    await this.messageSender.sendMessage(outbound)
+  }
 }

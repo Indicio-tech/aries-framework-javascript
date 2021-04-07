@@ -4,23 +4,27 @@ import { Attachment, AttachmentData } from '../../../decorators/attachment/Attac
 import { DataTransferProvideDataMessage } from '../messages'
 
 export class DataTransferService extends EventEmitter {
-    public constructor(){
-        super()
-    }
+  public constructor() {
+    super()
+  }
 
-    public async createProvideData(dataToSend:any, goalCode:string, description:string = "Transfer of Data"):Promise<DataTransferProvideDataMessage> {
-        const attachment = new Attachment({
-            description: description,
-            data: new AttachmentData({
-              json: dataToSend
-            }),
-          })
+  public async createProvideData(
+    dataToSend: any,
+    goalCode: string,
+    description: string = 'Transfer of Data'
+  ): Promise<DataTransferProvideDataMessage> {
+    const attachment = new Attachment({
+      description: description,
+      data: new AttachmentData({
+        json: dataToSend,
+      }),
+    })
 
-        const provideDataMessage = new DataTransferProvideDataMessage({
-            goal_code: goalCode,
-            attachments: [attachment],
-        })
+    const provideDataMessage = new DataTransferProvideDataMessage({
+      goal_code: goalCode,
+      attachments: [attachment],
+    })
 
-        return provideDataMessage
-    }
+    return provideDataMessage
+  }
 }

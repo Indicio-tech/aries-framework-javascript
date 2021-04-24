@@ -19,6 +19,10 @@ export class AgentConfig {
     return this.initConfig.label
   }
 
+  public set label (label) {
+    this.initConfig.label = label;
+  }
+
   public get publicDid() {
     return this.initConfig.publicDid
   }
@@ -56,6 +60,7 @@ export class AgentConfig {
   }
 
   public getEndpoint() {
+    console.log("inbound connection:",this.inboundConnection)
     // If a mediator is used, always return that as endpoint
     const mediatorEndpoint = this.inboundConnection?.connection?.theirDidDoc?.service[0].serviceEndpoint
     if (mediatorEndpoint) return mediatorEndpoint

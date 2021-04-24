@@ -129,6 +129,10 @@ export class Agent {
     this.messageSender.setOutboundTransporter(outboundTransporter)
   }
 
+  public setLabel(label:string) {
+    this.agentConfig.label = label
+  }
+
   public async init() {
     await this.wallet.init()
 
@@ -145,6 +149,7 @@ export class Agent {
         genesis_txn: genesisPath,
       })
     }
+    
 
     if (this.inboundTransporter) {
       await this.inboundTransporter.start(this)

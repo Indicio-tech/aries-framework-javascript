@@ -864,4 +864,64 @@ describe('CredentialService', () => {
       )
     })
   })
+
+  describe('declineOffer', () => {
+    const threadId = 'fd9c5ddb-ec11-4acd-bc32-540736249754'
+    let credential: CredentialRecord
+
+    beforeEach(() => {
+      credential = mockCredentialRecord({
+        state: CredentialState.CredentialReceived,
+        tags: { threadId },
+      })
+    })
+
+    test(`updates state to ${CredentialState.OfferDeclinedSent}`, async () => {
+      // given
+      const repositoryUpdateSpy = jest.spyOn(credentialRepository, 'update')
+
+      // when
+      await credentialService.declineOffer(credential)
+
+      // then
+      expect(repositoryUpdateSpy).toHaveBeenCalledTimes(1)
+      const [[updatedCredentialRecord]] = repositoryUpdateSpy.mock.calls
+      expect(updatedCredentialRecord).toMatchObject({
+        state: CredentialState.OfferDeclinedSent,
+      })
+    })
+
+    test(`emits stateChange event from ${CredentialState.CredentialReceived} to ${CredentialState.OfferDeclinedSent}`, async () => {
+      const eventListenerMock = jest.fn()
+      credentialService.on(CredentialEventType.StateChanged, eventListenerMock)
+
+      // given
+      repositoryFindMock.mockReturnValue(Promise.resolve(credential))
+
+      // when
+      await credentialService.declineOffer(credential)
+
+      // then
+      expect(eventListenerMock).toHaveBeenCalledTimes(1)
+      const [[event]] = eventListenerMock.mock.calls
+      expect(event).toMatchObject({
+        previousState: CredentialState.CredentialReceived,
+        credentialRecord: {
+          state: CredentialState.OfferDeclinedSent,
+        },
+      })
+    })
+
+    const validState = CredentialState.CredentialReceived
+    const invalidCredentialStates = Object.values(CredentialState).filter((state) => state !== validState)
+    test(`throws an error when state transition is invalid`, async () => {
+      await Promise.all(
+        invalidCredentialStates.map(async (state) => {
+          await expect(
+            credentialService.createAck(mockCredentialRecord({ state, tags: { threadId } }))
+          ).rejects.toThrowError(`Credential record is in invalid state ${state}. Valid states are: ${validState}.`)
+        })
+      )
+    })
+  })
 })

@@ -593,6 +593,18 @@ export class CredentialService extends EventEmitter {
   }
 
   /**
+   * Decline a credential offer
+   * @param credentialRecord The credential to be declined
+   */
+  public async declineOffer(
+    credentialRecord: CredentialRecord
+  ): Promise<void> {
+    credentialRecord.assertState(CredentialState.OfferReceived)
+
+    await this.updateState(credentialRecord, CredentialState.OfferDeclinedSent)
+  }
+
+  /**
    * Process a received {@link CredentialAckMessage}.
    *
    * @param messageContext The message context containing a credential acknowledgement message

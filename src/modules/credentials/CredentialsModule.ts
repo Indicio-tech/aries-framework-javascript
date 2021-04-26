@@ -156,6 +156,17 @@ export class CredentialsModule {
   }
 
   /**
+   * Declines an offer as holder
+   * @param credentialRecordId the id of the credential to be declined
+   * @returns credential record that was declined
+   */
+  public async declineOffer(credentialRecordId: string) {
+    const credentialRecord = await this.credentialService.getById(credentialRecordId)
+    await this.credentialService.declineOffer(credentialRecord)
+    return credentialRecord
+  }
+
+  /**
    * Accept a credential request as issuer (by sending a credential message) to the connection
    * associated with the credential record.
    *

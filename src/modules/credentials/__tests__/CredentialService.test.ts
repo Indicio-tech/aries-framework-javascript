@@ -871,7 +871,7 @@ describe('CredentialService', () => {
 
     beforeEach(() => {
       credential = mockCredentialRecord({
-        state: CredentialState.CredentialReceived,
+        state: CredentialState.OfferReceived,
         tags: { threadId },
       })
     })
@@ -891,7 +891,7 @@ describe('CredentialService', () => {
       })
     })
 
-    test(`emits stateChange event from ${CredentialState.CredentialReceived} to ${CredentialState.OfferDeclinedSent}`, async () => {
+    test(`emits stateChange event from ${CredentialState.OfferReceived} to ${CredentialState.OfferDeclinedSent}`, async () => {
       const eventListenerMock = jest.fn()
       credentialService.on(CredentialEventType.StateChanged, eventListenerMock)
 
@@ -905,20 +905,20 @@ describe('CredentialService', () => {
       expect(eventListenerMock).toHaveBeenCalledTimes(1)
       const [[event]] = eventListenerMock.mock.calls
       expect(event).toMatchObject({
-        previousState: CredentialState.CredentialReceived,
+        previousState: CredentialState.OfferReceived,
         credentialRecord: {
           state: CredentialState.OfferDeclinedSent,
         },
       })
     })
 
-    const validState = CredentialState.CredentialReceived
+    const validState = CredentialState.OfferReceived
     const invalidCredentialStates = Object.values(CredentialState).filter((state) => state !== validState)
     test(`throws an error when state transition is invalid`, async () => {
       await Promise.all(
         invalidCredentialStates.map(async (state) => {
           await expect(
-            credentialService.createAck(mockCredentialRecord({ state, tags: { threadId } }))
+            credentialService.declineOffer(mockCredentialRecord({ state, tags: { threadId } }))
           ).rejects.toThrowError(`Credential record is in invalid state ${state}. Valid states are: ${validState}.`)
         })
       )

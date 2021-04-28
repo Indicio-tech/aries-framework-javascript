@@ -211,6 +211,7 @@ describe('ConnectionService', () => {
       expect(connection.invitation).toMatchObject(invitation)
       expect(connection.alias).toBeUndefined()
       expect(connectionAlias.alias).toBe('test-alias')
+      expect(connection.theirLabel).toBe('test label')
     })
 
     it('returns a connection record with the autoAcceptConnection parameter from the config', async () => {
@@ -302,7 +303,7 @@ describe('ConnectionService', () => {
 
   describe('processRequest', () => {
     it('returns a connection record containing the information from the connection request', async () => {
-      expect.assertions(5)
+      expect.assertions(6)
 
       const connectionRecord = getMockConnection({
         state: ConnectionState.Invited,
@@ -343,6 +344,7 @@ describe('ConnectionService', () => {
       expect(processedConnection.theirDid).toBe(theirDid)
       // TODO: we should transform theirDidDoc to didDoc instance after retrieving from persistence
       expect(processedConnection.theirDidDoc).toEqual(theirDidDoc)
+      expect(processedConnection.theirLabel).toBe('test-label')
       expect(processedConnection.tags.theirKey).toBe(theirVerkey)
       expect(processedConnection.tags.threadId).toBe(connectionRequest.id)
     })

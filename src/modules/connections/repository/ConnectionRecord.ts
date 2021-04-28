@@ -22,6 +22,7 @@ interface ConnectionProps {
   role: ConnectionRole
   endpoint?: string
   alias?: string
+  theirLabel?: string
   autoAcceptConnection?: boolean
 }
 
@@ -47,6 +48,7 @@ export class ConnectionRecord extends BaseRecord implements ConnectionStoragePro
   public role: ConnectionRole
   public endpoint?: string
   public alias?: string
+  public theirLabel?: string
   public autoAcceptConnection?: boolean
   public tags: ConnectionTags
 
@@ -64,6 +66,7 @@ export class ConnectionRecord extends BaseRecord implements ConnectionStoragePro
     this.role = props.role
     this.endpoint = props.endpoint
     this.alias = props.alias
+    this.theirLabel = props.theirLabel
     this.autoAcceptConnection = props.autoAcceptConnection
     this.tags = props.tags
     this.invitation = props.invitation

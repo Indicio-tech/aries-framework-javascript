@@ -114,6 +114,7 @@ export class ConnectionService extends EventEmitter {
       role: ConnectionRole.Invitee,
       state: ConnectionState.Invited,
       alias: config?.alias,
+      theirLabel: invitation.label,
       autoAcceptConnection: config?.autoAcceptConnection,
       invitation,
       tags: {
@@ -186,6 +187,7 @@ export class ConnectionService extends EventEmitter {
 
     connectionRecord.theirDid = message.connection.did
     connectionRecord.theirDidDoc = message.connection.didDoc
+    connectionRecord.theirLabel = message.label
 
     if (!connectionRecord.theirKey) {
       throw new Error(`Connection with id ${connectionRecord.id} has no recipient keys.`)
@@ -353,6 +355,7 @@ export class ConnectionService extends EventEmitter {
     state: ConnectionState
     invitation?: ConnectionInvitationMessage
     alias?: string
+    theirLabel?: string
     autoAcceptConnection?: boolean
     tags?: ConnectionTags
   }): Promise<ConnectionRecord> {
@@ -394,6 +397,7 @@ export class ConnectionService extends EventEmitter {
       },
       invitation: options.invitation,
       alias: options.alias,
+      theirLabel: options.theirLabel,
       autoAcceptConnection: options.autoAcceptConnection,
     })
 

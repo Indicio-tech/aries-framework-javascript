@@ -1,141 +1,123 @@
 import { Subject } from 'rxjs'
 import { Agent, GenericDataRecord } from '..'
 import { Tags } from '../storage/BaseRecord'
-import { 
-    getBaseConfig,
-    genesisPath,
-    SubjectInboundTransporter,
-    SubjectOutboundTransporter,
- } from './helpers'
+import { getBaseConfig, genesisPath, SubjectInboundTransporter, SubjectOutboundTransporter } from './helpers'
 
-const aliceConfig = getBaseConfig("Alice Data", {
-    genesisPath
+const aliceConfig = getBaseConfig('Alice Data', {
+  genesisPath,
 })
 
-const bobConfig = getBaseConfig("Bob Data", {
-    genesisPath
+const bobConfig = getBaseConfig('Bob Data', {
+  genesisPath,
 })
 
-const compareArrays = (arr1:GenericDataRecord[], arr2:GenericDataRecord[])=>{
-    let pass = true
-    arr1.forEach(record=>{
-        const found = arr2.find(r=>r.id === record.id)
-        if(!found)
-            pass = false
-    })
+const compareArrays = (arr1: GenericDataRecord[], arr2: GenericDataRecord[]) => {
+  let pass = true
+  arr1.forEach((record) => {
+    const found = arr2.find((r) => r.id === record.id)
+    if (!found) pass = false
+  })
 
-    arr2.forEach(record=>{
-        const found = arr1.find(r=>r.id === record.id)
-        if(!found)
-            pass = false
-    })
+  arr2.forEach((record) => {
+    const found = arr1.find((r) => r.id === record.id)
+    if (!found) pass = false
+  })
 
-    return pass
+  return pass
 }
 
-describe('Generic Data', ()=>{
-    let aliceAgent: Agent
-    let bobAgent: Agent
+describe('Generic Data', () => {
+  let aliceAgent: Agent
+  let bobAgent: Agent
 
-    beforeAll(async ()=>{
-        const aliceMessages = new Subject()
-        const bobMessages = new Subject()
+  beforeAll(async () => {
+    const aliceMessages = new Subject()
+    const bobMessages = new Subject()
 
-        aliceAgent = new Agent(aliceConfig)
-        aliceAgent.setInboundTransporter(new SubjectInboundTransporter(aliceMessages, bobMessages))
-        aliceAgent.setOutboundTransporter(new SubjectOutboundTransporter(bobMessages))
-        await aliceAgent.init()
+    aliceAgent = new Agent(aliceConfig)
+    aliceAgent.setInboundTransporter(new SubjectInboundTransporter(aliceMessages, bobMessages))
+    aliceAgent.setOutboundTransporter(new SubjectOutboundTransporter(bobMessages))
+    await aliceAgent.init()
 
-        bobAgent = new Agent(bobConfig)
-        bobAgent.setInboundTransporter(new SubjectInboundTransporter(bobMessages, aliceMessages))
-        bobAgent.setOutboundTransporter(new SubjectOutboundTransporter(aliceMessages))
-        await bobAgent.init()
-    })
+    bobAgent = new Agent(bobConfig)
+    bobAgent.setInboundTransporter(new SubjectInboundTransporter(bobMessages, aliceMessages))
+    bobAgent.setOutboundTransporter(new SubjectOutboundTransporter(aliceMessages))
+    await bobAgent.init()
+  })
 
-    afterAll(async ()=>{
-        await aliceAgent.closeAndDeleteWallet()
-        await bobAgent.closeAndDeleteWallet()
-    })
+  afterAll(async () => {
+    await aliceAgent.closeAndDeleteWallet()
+    await bobAgent.closeAndDeleteWallet()
+  })
 
-    test("Add and retrieve ten of the same tags", async ()=>{
-        let dataArr:GenericDataRecord[] = []
+  test('Add and retrieve ten of the same tags', async () => {
+    const dataArr: GenericDataRecord[] = []
 
-        const tags:Tags = {
-            multiples:"multiples"
-        }
+    const tags: Tags = {
+      multiples: 'multiples',
+    }
 
-        //Add 10 generic data records
-        for(let i = 1; i <= 10; i++){
-            const record = await aliceAgent.dataStorage.addGenericData(
-                `Multiples ${i}`,
-                `${i}`,
-                "text/plain",
-                tags,
-            )
-            dataArr.push(record)
-        }
+    //Add 10 generic data records
+    for (let i = 1; i <= 10; i++) {
+      const record = await aliceAgent.dataStorage.addGenericData(`Multiples ${i}`, `${i}`, 'text/plain', tags)
+      dataArr.push(record)
+    }
 
-        const multiples = await aliceAgent.dataStorage.queryByTags(tags)
+    const multiples = await aliceAgent.dataStorage.queryByTags(tags)
 
-        let pass = compareArrays(dataArr,multiples)
+    const pass = compareArrays(dataArr, multiples)
 
-        expect(pass).toBe(true)
-    })
+    expect(pass).toBe(true)
+  })
 
-    test("Create a new generic data record and delete it", async ()=>{
-        let record: GenericDataRecord|null
-        let success: boolean
+  test('Create a new generic data record and delete it', async () => {
+    let success: boolean
 
-        record = await aliceAgent.dataStorage.addGenericData(
-            'deleteMe', 
-            JSON.stringify({object: {object: {key:"value"}}}), 
-            "application/json"
-        )
+    const record: GenericDataRecord | null = await aliceAgent.dataStorage.addGenericData(
+      'deleteMe',
+      JSON.stringify({ object: { object: { key: 'value' } } }),
+      'application/json'
+    )
 
-        await aliceAgent.dataStorage.deleteGenericData(record)
+    await aliceAgent.dataStorage.deleteGenericData(record)
 
-        try{
-            await aliceAgent.dataStorage.getGenericDataByKey("deleteMe")
-            success = false
-        }catch(err){
-            success = true
-        }
-        
-        expect(success).toBe(true)
-    })
+    try {
+      await aliceAgent.dataStorage.getGenericDataByKey('deleteMe')
+      success = false
+    } catch (err) {
+      success = true
+    }
 
-    test("Create multiple credentials with different keys and fetch them all",async ()=>{
-        let dataArr:GenericDataRecord[] = []
+    expect(success).toBe(true)
+  })
 
-        for(let i = 1; i <= 10; i++){
-            const record = await bobAgent.dataStorage.addGenericData(
-                `key${i}`,
-                `Record #${i}`,
-                "text/plain"
-            )
-            dataArr.push(record)
-        }
+  test('Create multiple credentials with different keys and fetch them all', async () => {
+    const dataArr: GenericDataRecord[] = []
 
-        const allGeneric = await bobAgent.dataStorage.getAllGenericData()
+    for (let i = 1; i <= 10; i++) {
+      const record = await bobAgent.dataStorage.addGenericData(`key${i}`, `Record #${i}`, 'text/plain')
+      dataArr.push(record)
+    }
 
-        const pass = compareArrays(allGeneric, dataArr)
+    const allGeneric = await bobAgent.dataStorage.getAllGenericData()
 
-        expect(pass).toBe(true)
-    })
+    const pass = compareArrays(allGeneric, dataArr)
 
-    test("Create a generic data record and update the value", async()=>{
-        const updatedValue = "This is the updated value!"
-        let record: GenericDataRecord | null = await aliceAgent.dataStorage.addGenericData(
-            "updateThis",
-            "This is the old value!",
-            "text/plain"
-        )
+    expect(pass).toBe(true)
+  })
 
-        await aliceAgent.dataStorage.updateGenericDataByKey("updateThis", updatedValue)
+  test('Create a generic data record and update the value', async () => {
+    const updatedValue = 'This is the updated value!'
+    let record: GenericDataRecord | null = await aliceAgent.dataStorage.addGenericData(
+      'updateThis',
+      'This is the old value!',
+      'text/plain'
+    )
 
-        record = await aliceAgent.dataStorage.getGenericDataByKey("updateThis")
-        
-        expect(record?.value).toBe(updatedValue)
+    await aliceAgent.dataStorage.updateGenericDataByKey('updateThis', updatedValue)
 
-    })
+    record = await aliceAgent.dataStorage.getGenericDataByKey('updateThis')
+
+    expect(record?.value).toBe(updatedValue)
+  })
 })

@@ -13,6 +13,7 @@ import { AgentConfig } from './AgentConfig'
 import { Wallet } from '../wallet/Wallet'
 import { ConnectionsModule } from '../modules/connections/ConnectionsModule'
 import { CredentialsModule } from '../modules/credentials/CredentialsModule'
+import { DataStorageModule } from '../modules/data-storage/DataStorageModule'
 import { ProofsModule } from '../modules/proofs/ProofsModule'
 import { RoutingModule } from '../modules/routing/RoutingModule'
 import { BasicMessagesModule } from '../modules/basic-messages/BasicMessagesModule'
@@ -39,6 +40,7 @@ export class Agent {
   public readonly basicMessages!: BasicMessagesModule
   public readonly ledger!: LedgerModule
   public readonly credentials!: CredentialsModule
+  public readonly dataStorage!: DataStorageModule
 
   public constructor(initialConfig: InitConfig, messageRepository?: MessageRepository) {
     // Create child container so we don't interfere with anything outside of this agent
@@ -87,6 +89,7 @@ export class Agent {
     this.routing = this.container.resolve(RoutingModule)
     this.basicMessages = this.container.resolve(BasicMessagesModule)
     this.ledger = this.container.resolve(LedgerModule)
+    this.dataStorage = this.container.resolve(DataStorageModule)
 
     // Listen for new messages (either from transports or somewhere else in the framework / extensions)
     this.listenForMessages()

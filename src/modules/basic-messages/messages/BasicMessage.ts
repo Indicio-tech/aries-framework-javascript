@@ -1,5 +1,7 @@
 import { Equals, IsDate, IsString } from 'class-validator'
-import { Expose, Type } from 'class-transformer'
+import { Expose, Transform, Type } from 'class-transformer'
+
+import { DateTime } from 'luxon'
 
 import { AgentMessage } from '../../../agent/AgentMessage'
 import { MessageType } from './BasicMessageMessageType'
@@ -27,6 +29,7 @@ export class BasicMessage extends AgentMessage {
 
   @Expose({ name: 'sent_time' })
   @Type(() => Date)
+  @Transform(({ value }) => new Date(DateTime.fromSQL(value ?? new Date().toString()).toString()))
   @IsDate()
   public sentTime!: Date
 

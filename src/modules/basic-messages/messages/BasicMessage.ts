@@ -32,11 +32,9 @@ export class BasicMessage extends AgentMessage {
     const parsedDate = new Date(value)
     const luxonDate = DateTime.fromSQL(value)
     if (parsedDate instanceof Date && !isNaN(parsedDate.getTime())) {
-      console.log(parsedDate)
       return parsedDate
     }
     if (luxonDate.isValid) {
-      console.log(luxonDate.toString())
       return new Date(luxonDate.toString())
     }
     return new Date()

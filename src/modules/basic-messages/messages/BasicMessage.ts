@@ -28,8 +28,19 @@ export class BasicMessage extends AgentMessage {
   public static readonly type = MessageType.BasicMessage
 
   @Expose({ name: 'sent_time' })
-  @Type(() => Date)
-  @Transform(({ value }) => new Date(DateTime.fromSQL(value ?? new Date().toString()).toString()))
+  @Transform(({ value }) => {
+    const parsedDate = new Date(value)
+    const luxonDate = DateTime.fromSQL(value)
+    if (parsedDate instanceof Date && !isNaN(parsedDate.getTime())) {
+      console.log(parsedDate)
+      return parsedDate
+    }
+    if (luxonDate.isValid) {
+      console.log(luxonDate.toString())
+      return new Date(luxonDate.toString())
+    }
+    return new Date()
+  })
   @IsDate()
   public sentTime!: Date
 

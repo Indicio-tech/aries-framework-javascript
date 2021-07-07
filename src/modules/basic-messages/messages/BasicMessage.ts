@@ -1,9 +1,8 @@
 import { Equals, IsDate, IsString } from 'class-validator'
-import { Expose, Transform, Type } from 'class-transformer'
-
-import { DateTime } from 'luxon'
+import { Expose, Transform } from 'class-transformer'
 
 import { AgentMessage } from '../../../agent/AgentMessage'
+import { DateParser } from '../../../utils/transformers'
 import { MessageType } from './BasicMessageMessageType'
 
 export class BasicMessage extends AgentMessage {
@@ -28,17 +27,7 @@ export class BasicMessage extends AgentMessage {
   public static readonly type = MessageType.BasicMessage
 
   @Expose({ name: 'sent_time' })
-  @Transform(({ value }) => {
-    const parsedDate = new Date(value)
-    const luxonDate = DateTime.fromSQL(value)
-    if (parsedDate instanceof Date && !isNaN(parsedDate.getTime())) {
-      return parsedDate
-    }
-    if (luxonDate.isValid) {
-      return new Date(luxonDate.toString())
-    }
-    return new Date()
-  })
+  @Transform(({ value }) => DateParser(value))
   @IsDate()
   public sentTime!: Date
 

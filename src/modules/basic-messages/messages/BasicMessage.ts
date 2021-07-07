@@ -1,7 +1,8 @@
 import { Equals, IsDate, IsString } from 'class-validator'
-import { Expose, Type } from 'class-transformer'
+import { Expose, Transform } from 'class-transformer'
 
 import { AgentMessage } from '../../../agent/AgentMessage'
+import { DateParser } from '../../../utils/transformers'
 import { MessageType } from './BasicMessageMessageType'
 
 export class BasicMessage extends AgentMessage {
@@ -26,7 +27,7 @@ export class BasicMessage extends AgentMessage {
   public static readonly type = MessageType.BasicMessage
 
   @Expose({ name: 'sent_time' })
-  @Type(() => Date)
+  @Transform(({ value }) => DateParser(value))
   @IsDate()
   public sentTime!: Date
 

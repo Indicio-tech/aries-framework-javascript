@@ -1,6 +1,6 @@
-import type { DidDoc } from '../modules/connections/models'
+import type { DidDoc, IndyAgentService } from '../modules/connections/models'
 import type { ConnectionRecord } from '../modules/connections/repository'
-import type { OutboundPackage } from '../types'
+import type { WireMessage } from '../types'
 import type { AgentMessage } from './AgentMessage'
 import type { EnvelopeKeys } from './EnvelopeService'
 
@@ -33,7 +33,10 @@ export class TransportService {
     delete this.transportSessionTable[session.id]
   }
 
-  public findDidCommServices(connection: ConnectionRecord, supportedProtocols: string[]): DidCommService[] {
+  public findDidCommServices(
+    connection: ConnectionRecord,
+    supportedProtocols: string[]
+  ): Array<DidCommService | IndyAgentService> {
     if (connection.theirDidDoc) {
       // map for efficient lookup of sortIndex
       const supportedProtocolsIndexTable = new Map(supportedProtocols.map((v, i) => [v, i]))
@@ -83,5 +86,5 @@ export interface TransportSession {
   keys?: EnvelopeKeys
   inboundMessage?: AgentMessage
   connection?: ConnectionRecord
-  send(outboundMessage: OutboundPackage): Promise<void>
+  send(wireMessage: WireMessage): Promise<void>
 }

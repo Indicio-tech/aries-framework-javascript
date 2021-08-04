@@ -1,4 +1,5 @@
 import type { Agent, ConnectionStateChangedEvent } from '@aries-framework/core'
+// eslint-disable-next-line import/no-unresolved
 import type { EnhancedStore } from '@reduxjs/toolkit'
 
 import { ConnectionEventTypes } from '@aries-framework/core'

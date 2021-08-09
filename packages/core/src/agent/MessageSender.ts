@@ -199,7 +199,6 @@ export class MessageSender {
     this.logger.debug(
       `Found ${allServices.length} services for message to connection '${connection.id}' (${connection.theirLabel})`
     )
-
     // Loop trough all available services and try to send the message
     for await (const service of reachableServices) {
       try {

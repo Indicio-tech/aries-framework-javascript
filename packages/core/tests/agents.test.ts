@@ -53,7 +53,7 @@ describe('agents', () => {
 
     const aliceConnectionAtAliceBob = await aliceAgent.connections.createConnection()
     const bobConnectionAtBobAlice = await bobAgent.connections.receiveInvitation(aliceConnectionAtAliceBob.invitation)
-    
+
     aliceConnection = await aliceAgent.connections.returnWhenIsConnected(aliceConnectionAtAliceBob.connectionRecord.id)
     bobConnection = await bobAgent.connections.returnWhenIsConnected(bobConnectionAtBobAlice.id)
 

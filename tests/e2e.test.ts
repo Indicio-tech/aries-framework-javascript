@@ -32,12 +32,14 @@ import { HttpInboundTransport, WsInboundTransport } from '@aries-framework/node'
 const recipientConfig = getBaseConfig('E2E Recipient', {
   autoAcceptCredentials: AutoAcceptCredential.ContentApproved,
 })
+const mediatorPort = 3202
 const mediatorConfig = getBaseConfig('E2E Mediator', {
-  endpoint: 'http://localhost:3002',
+  endpoint: `http://localhost:${mediatorPort}`,
   autoAcceptMediationRequests: true,
 })
+const senderPort = 3203
 const senderConfig = getBaseConfig('E2E Sender', {
-  endpoint: 'http://localhost:3003',
+  endpoint: `http://localhost:${senderPort}`,
   mediatorPollingInterval: 1000,
   autoAcceptCredentials: AutoAcceptCredential.ContentApproved,
 })
@@ -65,12 +67,12 @@ describe('E2E tests', () => {
     await recipientAgent.initialize()
 
     // Mediator Setup
-    mediatorAgent.setInboundTransporter(new HttpInboundTransport({ port: 3002 }))
+    mediatorAgent.setInboundTransporter(new HttpInboundTransport({ port: mediatorPort }))
     mediatorAgent.registerOutboundTransporter(new HttpOutboundTransporter())
     await mediatorAgent.initialize()
 
     // Sender Setup
-    senderAgent.setInboundTransporter(new HttpInboundTransport({ port: 3003 }))
+    senderAgent.setInboundTransporter(new HttpInboundTransport({ port: senderPort }))
     senderAgent.registerOutboundTransporter(new HttpOutboundTransporter())
     await senderAgent.initialize()
 
@@ -87,12 +89,12 @@ describe('E2E tests', () => {
     await recipientAgent.initialize()
 
     // Mediator Setup
-    mediatorAgent.setInboundTransporter(new WsInboundTransport({ port: 3002 }))
+    mediatorAgent.setInboundTransporter(new WsInboundTransport({ port: mediatorPort }))
     mediatorAgent.registerOutboundTransporter(new WsOutboundTransporter())
     await mediatorAgent.initialize()
 
     // Sender Setup
-    senderAgent.setInboundTransporter(new WsInboundTransport({ port: 3003 }))
+    senderAgent.setInboundTransporter(new WsInboundTransport({ port: senderPort }))
     senderAgent.registerOutboundTransporter(new WsOutboundTransporter())
     await senderAgent.initialize()
 
@@ -109,8 +111,8 @@ describe('E2E tests', () => {
     const senderMessages = new Subject<SubjectMessage>()
 
     const subjectMap = {
-      'http://localhost:3002': mediatorMessages,
-      'http://localhost:3003': senderMessages,
+      'http://localhost:3202': mediatorMessages,
+      'http://localhost:3203': senderMessages,
     }
 
     // Recipient Setup

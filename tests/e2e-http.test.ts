@@ -9,13 +9,13 @@ const recipientConfig = getBaseConfig('E2E HTTP Recipient', {
   autoAcceptCredentials: AutoAcceptCredential.ContentApproved,
 })
 
-const mediatorPort = 3000
+const mediatorPort = 3300
 const mediatorConfig = getBaseConfig('E2E HTTP Mediator', {
   endpoint: `http://localhost:${mediatorPort}`,
   autoAcceptMediationRequests: true,
 })
 
-const senderPort = 3001
+const senderPort = 3301
 const senderConfig = getBaseConfig('E2E HTTP Sender', {
   endpoint: `http://localhost:${senderPort}`,
   mediatorPollingInterval: 1000,
@@ -41,17 +41,17 @@ describe('E2E HTTP tests', () => {
 
   test('Full HTTP flow (connect, request mediation, issue, verify)', async () => {
     // Recipient Setup
-    recipientAgent.setOutboundTransporter(new HttpOutboundTransporter())
+    recipientAgent.registerOutboundTransporter(new HttpOutboundTransporter())
     await recipientAgent.initialize()
 
     // Mediator Setup
     mediatorAgent.setInboundTransporter(new HttpInboundTransport({ port: mediatorPort }))
-    mediatorAgent.setOutboundTransporter(new HttpOutboundTransporter())
+    mediatorAgent.registerOutboundTransporter(new HttpOutboundTransporter())
     await mediatorAgent.initialize()
 
     // Sender Setup
     senderAgent.setInboundTransporter(new HttpInboundTransport({ port: senderPort }))
-    senderAgent.setOutboundTransporter(new HttpOutboundTransporter())
+    senderAgent.registerOutboundTransporter(new HttpOutboundTransporter())
     await senderAgent.initialize()
 
     await e2eTest({

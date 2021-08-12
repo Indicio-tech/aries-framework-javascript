@@ -45,7 +45,7 @@ export class MessageSender {
     }
   }
 
-  public get supportedTransports() {
+  public get supportedTransportSchemes() {
     // map all supported schema into a new list
     // reduce the list of listed schemas into a single list
     // remove duplicates by creating a new set and spreading it into a list
@@ -96,13 +96,12 @@ export class MessageSender {
   public async sendPackage({
     connection,
     packedMessage,
+    priority = false,
   }: {
     connection: ConnectionRecord
     packedMessage: WireMessage
+    priority: boolean
   }) {
-    if (this.outboundTransports.length === 0) {
-      throw new AriesFrameworkError('Agent has no outbound transporter!')
-    }
     // Try to send to already open session
     const session = this.transportService.findSessionByConnectionId(connection.id)
     if (session?.inboundMessage?.hasReturnRouting()) {
@@ -115,7 +114,10 @@ export class MessageSender {
     }
 
     // Retrieve DIDComm services
-    const allServices = this.transportService.findDidCommServices(connection, this.supportedTransports)
+    const allServices = this.transportService.findDidCommServices(
+      connection,
+      priority ? this.supportedTransportSchemes : []
+    )
     if (allServices.length === 0) {
       throw new AriesFrameworkError(`Connection with id ${connection.id} has no service!`)
     }
@@ -168,11 +170,7 @@ export class MessageSender {
     throw new AriesFrameworkError(`Message is undeliverable to connection ${connection.id} (${connection.theirLabel})`)
   }
 
-  public async sendMessage(outboundMessage: OutboundMessage) {
-    if (this.outboundTransports.length === 0) {
-      throw new AriesFrameworkError('Agent has no outbound transporter!')
-    }
-
+  public async sendMessage(outboundMessage: OutboundMessage, priority = false) {
     const { connection, payload } = outboundMessage
 
     this.logger.debug('Send outbound message', {
@@ -192,7 +190,10 @@ export class MessageSender {
     }
 
     // Retrieve DIDComm services
-    const allServices = this.transportService.findDidCommServices(connection, this.supportedTransports)
+    const allServices = this.transportService.findDidCommServices(
+      connection,
+      priority ? this.supportedTransportSchemes : []
+    )
     const reachableServices = allServices.filter((s) => !isDidCommTransportQueue(s.serviceEndpoint))
     const queueService = allServices.find((s) => isDidCommTransportQueue(s.serviceEndpoint))
 

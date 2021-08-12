@@ -1,10 +1,7 @@
 import type { Agent } from '@aries-framework/core'
-// eslint-disable-next-line import/no-unresolved
 import type { TypedUseSelectorHook } from 'react-redux'
 
-// eslint-disable-next-line import/no-unresolved
 import { combineReducers, configureStore } from '@reduxjs/toolkit'
-// eslint-disable-next-line import/no-unresolved
 import { useDispatch, useSelector } from 'react-redux'
 
 import { credentialsSlice, proofsSlice, connectionsSlice, agentSlice } from './slices'

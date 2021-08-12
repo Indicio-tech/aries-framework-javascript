@@ -1,5 +1,4 @@
 import type { CredentialStateChangedEvent, Agent } from '@aries-framework/core'
-// eslint-disable-next-line import/no-unresolved
 import type { EnhancedStore } from '@reduxjs/toolkit'
 
 import { CredentialEventTypes } from '@aries-framework/core'

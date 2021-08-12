@@ -1,5 +1,4 @@
 import type { ProofStateChangedEvent, Agent } from '@aries-framework/core'
-// eslint-disable-next-line import/no-unresolved
 import type { EnhancedStore } from '@reduxjs/toolkit'
 
 import { ProofEventTypes } from '@aries-framework/core'

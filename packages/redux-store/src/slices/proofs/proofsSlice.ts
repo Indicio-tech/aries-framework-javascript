@@ -1,8 +1,6 @@
 import type { ProofRecord } from '@aries-framework/core'
-// eslint-disable-next-line import/no-unresolved
 import type { PayloadAction, SerializedError } from '@reduxjs/toolkit'
 
-// eslint-disable-next-line import/no-unresolved
 import { createSlice } from '@reduxjs/toolkit'
 
 import { ProofsThunks } from './proofsThunks'

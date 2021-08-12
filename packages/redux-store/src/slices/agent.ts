@@ -1,8 +1,6 @@
 import type { AgentThunkApiConfig } from '../utils'
-// eslint-disable-next-line import/no-unresolved
 import type { SerializedError } from '@reduxjs/toolkit'
 
-// eslint-disable-next-line import/no-unresolved
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 
 export interface AgentState {

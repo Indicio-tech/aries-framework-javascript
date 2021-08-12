@@ -16,7 +16,6 @@ import { InjectionSymbols } from '../constants'
 import { AriesFrameworkError } from '../error'
 import { BasicMessagesModule } from '../modules/basic-messages/BasicMessagesModule'
 import { ConnectionsModule } from '../modules/connections/ConnectionsModule'
-import { ConnectionInvitationMessage } from '../modules/connections/messages/ConnectionInvitationMessage'
 import { CredentialsModule } from '../modules/credentials/CredentialsModule'
 import { DiscoverFeaturesModule } from '../modules/discover-features'
 import { LedgerModule } from '../modules/ledger/LedgerModule'
@@ -163,51 +162,13 @@ export class Agent {
     }
 
     for (const transport of this.messageSender.outboundTransporters) {
-      transport?.start(this)
+      transport.start(this)
     }
 
     // Connect to mediator through provided invitation if provided in config
     // Also requests mediation ans sets as default mediator
     // Because this requires the connections module, we do this in the agent constructor
-    if (mediatorConnectionsInvite) {
-      // Assumption: processInvitation is a URL-encoded invitation
-      const invitation = await ConnectionInvitationMessage.fromUrl(mediatorConnectionsInvite)
-      // Check if invitation has been used already
-      const connections = await this.connections.getAll()
-      let defaultMediatorBootstrapped = false
-      for (const connection of connections) {
-        if (connection.invitation?.id === invitation.id) {
-          this.logger.warn(
-            `Mediator Invitation in configuration has already been used to ${
-              connection.isReady ? 'make' : 'initialize'
-            } a connection`
-          )
-          if (connection.isReady) {
-            const mediator = await this.mediationRecipient.findByConnectionId(connection.id)
-            if (mediator) {
-              this.logger.warn(
-                `Mediator Invitation in configuration has already been ${
-                  mediator.isReady ? 'granted' : 'requested'
-                } mediation`
-              )
-              if (mediator.isReady) {
-                defaultMediatorBootstrapped = true
-              }
-            }
-          }
-          break
-        }
-      }
-      if (!defaultMediatorBootstrapped) {
-        let connectionRecord = await this.connections.receiveInvitation(invitation, {
-          autoAcceptConnection: true,
-        })
-        // TODO: add timeout to returnWhenIsConnected
-        connectionRecord = await this.connections.returnWhenIsConnected(connectionRecord.id)
-        const mediationRecord = await this.mediationRecipient.requestAndAwaitGrant(connectionRecord, 60000) // TODO: put timeout as a config parameter
-        await this.mediationRecipient.setDefaultMediator(mediationRecord)
-      }
-    }
+    this.mediationRecipient.provision(mediatorConnectionsInvite, this.connections)
 
     await this.mediationRecipient.initialize()
 
@@ -221,7 +182,7 @@ export class Agent {
 
     // Stop transports
     for (const transport of this.messageSender.outboundTransporters) {
-      transport?.stop()
+      transport.stop()
     }
     await this.inboundTransporter?.stop()
 

@@ -9,13 +9,13 @@ const recipientConfig = getBaseConfig('E2E HTTP Recipient', {
   autoAcceptCredentials: AutoAcceptCredential.ContentApproved,
 })
 
-const mediatorPort = 3300
+const mediatorPort = 3000
 const mediatorConfig = getBaseConfig('E2E HTTP Mediator', {
   endpoint: `http://localhost:${mediatorPort}`,
   autoAcceptMediationRequests: true,
 })
 
-const senderPort = 3301
+const senderPort = 3001
 const senderConfig = getBaseConfig('E2E HTTP Sender', {
   endpoint: `http://localhost:${senderPort}`,
   mediatorPollingInterval: 1000,

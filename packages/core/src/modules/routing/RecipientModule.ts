@@ -1,4 +1,4 @@
-import type { ConnectionRecord } from '../connections'
+import type { ConnectionRecord, ConnectionsModule } from '../connections'
 import type { MediationStateChangedEvent } from './RoutingEvents'
 import type { MediationRecord } from './index'
 
@@ -11,6 +11,7 @@ import { Dispatcher } from '../../agent/Dispatcher'
 import { EventEmitter } from '../../agent/EventEmitter'
 import { MessageSender } from '../../agent/MessageSender'
 import { createOutboundMessage } from '../../agent/helpers'
+import { ConnectionInvitationMessage } from '../connections'
 import { ConnectionService } from '../connections/services'
 
 import { MediatorPickupStrategy } from './MediatorPickupStrategy'
@@ -178,6 +179,50 @@ export class RecipientModule {
     return event.payload.mediationRecord
   }
 
+  public async provision(mediatorConnInvite?: string, connectionsModule?: ConnectionsModule) {
+    // Connect to mediator through provided invitation if provided in config
+    // Also requests mediation ans sets as default mediator
+    // Because this requires the connections module, we do this in the agent constructor
+    if (mediatorConnInvite && connectionsModule) {
+      // Assumption: processInvitation is a URL-encoded invitation
+      const invitation = await ConnectionInvitationMessage.fromUrl(mediatorConnInvite)
+      // Check if invitation has been used already
+      if (!invitation || !invitation.recipientKeys || !invitation.recipientKeys[0]) {
+        throw new Error(`Invalid mediation invitation`)
+      }
+      let defaultMediatorBootstrapped = false
+      const connection = await this.connectionService.findByInvitationKey(invitation.recipientKeys[0])
+      if (connection) {
+        this.agentConfig.logger.warn(
+          'Mediator Invitation in configuration has already been used to create a connection.'
+        )
+        if (connection.isReady) {
+          const mediator = await this.findByConnectionId(connection.id)
+          if (mediator) {
+            this.agentConfig.logger.warn(
+              `Mediator Invitation in configuration has already been ${
+                mediator.isReady ? 'granted' : 'requested'
+              } mediation`
+            )
+            if (mediator.isReady) {
+              defaultMediatorBootstrapped = true
+            }
+          }
+        } else {
+          throw new Error('connection created using mediator invitation is not ready.')
+        }
+      }
+      if (!defaultMediatorBootstrapped) {
+        let connectionRecord = await connectionsModule.receiveInvitation(invitation, {
+          autoAcceptConnection: true,
+        })
+        // TODO: add timeout to returnWhenIsConnected
+        connectionRecord = await connectionsModule.returnWhenIsConnected(connectionRecord.id)
+        const mediationRecord = await this.requestAndAwaitGrant(connectionRecord, 60000) // TODO: put timeout as a config parameter
+        await this.setDefaultMediator(mediationRecord)
+      }
+    }
+  }
   // Register handlers for the several messages for the mediator.
   private registerHandlers(dispatcher: Dispatcher) {
     dispatcher.registerHandler(new KeylistUpdateResponseHandler(this.mediationRecipientService))

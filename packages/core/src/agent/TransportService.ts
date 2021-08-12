@@ -38,9 +38,12 @@ export class TransportService {
     supportedProtocols: string[]
   ): Array<DidCommService | IndyAgentService> {
     if (connection.theirDidDoc) {
+      const services = connection.theirDidDoc.didCommServices
+      if (supportedProtocols === []) {
+        return services
+      }
       // map for efficient lookup of sortIndex
       const supportedProtocolsIndexTable = new Map(supportedProtocols.map((v, i) => [v, i]))
-      const services = connection.theirDidDoc.didCommServices
       // filter out any un-supported
       const filteredServices = services.filter((service) =>
         supportedProtocols.includes(service.serviceEndpoint.split(':')[0])

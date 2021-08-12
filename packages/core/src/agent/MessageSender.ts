@@ -100,7 +100,7 @@ export class MessageSender {
   }: {
     connection: ConnectionRecord
     packedMessage: WireMessage
-    priority: boolean
+    priority?: boolean
   }) {
     // Try to send to already open session
     const session = this.transportService.findSessionByConnectionId(connection.id)

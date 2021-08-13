@@ -11,7 +11,7 @@ export class SubjectOutboundTransporter implements OutboundTransporter {
   private ourSubject: Subject<SubjectMessage>
   private subjectMap: { [key: string]: Subject<SubjectMessage> | undefined }
 
-  public supportedSchemes = ['subject', 'http', 'https', 'rxjs']
+  public supportedSchemes = ['rxjs']
 
   public constructor(
     ourSubject: Subject<SubjectMessage>,

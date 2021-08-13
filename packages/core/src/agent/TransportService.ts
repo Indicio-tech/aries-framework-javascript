@@ -35,7 +35,7 @@ export class TransportService {
 
   public findDidCommServices(
     connection: ConnectionRecord,
-    supportedProtocols: string[]
+    supportedProtocols: string[] = []
   ): Array<DidCommService | IndyAgentService> {
     if (connection.theirDidDoc) {
       const services = connection.theirDidDoc.didCommServices

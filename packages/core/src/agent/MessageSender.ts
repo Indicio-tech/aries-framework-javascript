@@ -114,15 +114,23 @@ export class MessageSender {
     const allServices = this.transportService.findDidCommServices(connection)
     let reachableServices = allServices.filter((s) => !isDidCommTransportQueue(s.serviceEndpoint))
     if (options && options.preferredTransport) {
-      reachableServices = reachableServices
-        .filter((s) => s.serviceEndpoint.split(':')[0] === options.preferredTransport)
-        .concat(reachableServices)
+      reachableServices = [
+        ...new Set(
+          reachableServices
+            .filter((s) => s.serviceEndpoint.split(':')[0] === options.preferredTransport)
+            .concat(reachableServices)
+        ),
+      ]
     }
     const queueService = allServices.find((s) => isDidCommTransportQueue(s.serviceEndpoint))
 
     this.logger.debug(
       `Found ${allServices.length} services for message to connection '${connection.id}' (${connection.theirLabel})`
     )
+
+    if (this.outboundTransporters.length === 0 && !queueService) {
+      throw new AriesFrameworkError('Agent has no outbound transporter!')
+    }
 
     // Loop trough all available services and try to send the message
     for await (const service of reachableServices) {
@@ -189,9 +197,13 @@ export class MessageSender {
     const allServices = this.transportService.findDidCommServices(connection)
     let reachableServices = allServices.filter((s) => !isDidCommTransportQueue(s.serviceEndpoint))
     if (options && options.preferredTransport) {
-      reachableServices = reachableServices
-        .filter((s) => s.serviceEndpoint.split(':')[0] === options.preferredTransport)
-        .concat(reachableServices)
+      reachableServices = [
+        ...new Set(
+          reachableServices
+            .filter((s) => s.serviceEndpoint.split(':')[0] === options.preferredTransport)
+            .concat(reachableServices)
+        ),
+      ]
     }
     const queueService = allServices.find((s) => isDidCommTransportQueue(s.serviceEndpoint))
 

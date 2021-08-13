@@ -22,6 +22,7 @@ import { MediationGrantHandler } from './handlers/MediationGrantHandler'
 import { BatchPickupMessage } from './messages/BatchPickupMessage'
 import { MediationState } from './models/MediationState'
 import { MediationRecipientService } from './services/MediationRecipientService'
+import { AriesFrameworkError } from '@aries-framework/core'
 
 @scoped(Lifecycle.ContainerScoped)
 export class RecipientModule {
@@ -216,6 +217,9 @@ export class RecipientModule {
               mediator.isReady ? 'granted' : 'requested'
             } mediation`
           )
+          if (!mediator.isReady) {
+            throw new AriesFrameworkError('mediator has not granted mediation.')
+          }
         }
       }
     }

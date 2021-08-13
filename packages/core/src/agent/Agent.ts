@@ -169,7 +169,7 @@ export class Agent {
     // Connect to mediator through provided invitation if provided in config
     // Also requests mediation ans sets as default mediator
     // Because this requires the connections module, we do this in the agent constructor
-    this.mediationRecipient.provision(mediatorConnectionsInvite, this.connections)
+    this.mediationRecipient.provision(mediatorConnectionsInvite)
 
     await this.mediationRecipient.initialize()
 

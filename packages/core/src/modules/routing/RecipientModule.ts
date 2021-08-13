@@ -22,7 +22,6 @@ import { MediationGrantHandler } from './handlers/MediationGrantHandler'
 import { BatchPickupMessage } from './messages/BatchPickupMessage'
 import { MediationState } from './models/MediationState'
 import { MediationRecipientService } from './services/MediationRecipientService'
-import { AriesFrameworkError } from '@aries-framework/core'
 
 @scoped(Lifecycle.ContainerScoped)
 export class RecipientModule {
@@ -180,11 +179,11 @@ export class RecipientModule {
     return event.payload.mediationRecord
   }
 
-  public async provision(mediatorConnInvite?: string, connectionsModule?: ConnectionsModule) {
+  public async provision(mediatorConnInvite?: string) {
     // Connect to mediator through provided invitation if provided in config
     // Also requests mediation ans sets as default mediator
     // Because this requires the connections module, we do this in the agent constructor
-    if (mediatorConnInvite && connectionsModule) {
+    if (mediatorConnInvite) {
       // Assumption: processInvitation is a URL-encoded invitation
       const invitation = await ConnectionInvitationMessage.fromUrl(mediatorConnInvite)
       // Check if invitation has been used already
@@ -193,23 +192,29 @@ export class RecipientModule {
       }
       const connection = await this.connectionService.findByInvitationKey(invitation.recipientKeys[0])
       if (!connection) {
-        let connectionRecord = await connectionsModule.receiveInvitation(invitation, {
+        const routing = await this.mediationRecipientService.getRouting()
+        let connectionRecord = await this.connectionService.processInvitation(invitation, {
           autoAcceptConnection: true,
+          routing: routing,
         })
         // TODO: add timeout to returnWhenIsConnected
-        connectionRecord = await connectionsModule.returnWhenIsConnected(connectionRecord.id)
+        connectionRecord = await this.connectionService.returnWhenIsConnected(connectionRecord.id)
         const mediationRecord = await this.requestAndAwaitGrant(connectionRecord, 60000) // TODO: put timeout as a config parameter
         await this.setDefaultMediator(mediationRecord)
         return
       } else if (connection && !connection.isReady) {
+        const connectionRecord = await this.connectionService.returnWhenIsConnected(connection.id)
+        const mediationRecord = await this.requestAndAwaitGrant(connectionRecord, 60000) // TODO: put timeout as a config parameter
+        await this.setDefaultMediator(mediationRecord)
+        return
+      } else if (connection.isReady) {
         this.agentConfig.logger.warn(
           'Mediator Invitation in configuration has already been used to create a connection.'
         )
         const mediator = await this.findByConnectionId(connection.id)
         if (!mediator) {
           this.agentConfig.logger.warn('requesting mediation over connection.')
-          const connectionRecord = await connectionsModule.returnWhenIsConnected(connection.id)
-          const mediationRecord = await this.requestAndAwaitGrant(connectionRecord, 60000) // TODO: put timeout as a config parameter
+          const mediationRecord = await this.requestAndAwaitGrant(connection, 60000) // TODO: put timeout as a config parameter
           await this.setDefaultMediator(mediationRecord)
         } else {
           this.agentConfig.logger.warn(
@@ -217,9 +222,6 @@ export class RecipientModule {
               mediator.isReady ? 'granted' : 'requested'
             } mediation`
           )
-          if (!mediator.isReady) {
-            throw new AriesFrameworkError('mediator has not granted mediation.')
-          }
         }
       }
     }

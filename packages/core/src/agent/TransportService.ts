@@ -33,34 +33,9 @@ export class TransportService {
     delete this.transportSessionTable[session.id]
   }
 
-  public findDidCommServices(
-    connection: ConnectionRecord,
-    supportedProtocols: string[] = []
-  ): Array<DidCommService | IndyAgentService> {
+  public findDidCommServices(connection: ConnectionRecord): Array<DidCommService | IndyAgentService> {
     if (connection.theirDidDoc) {
-      const services = connection.theirDidDoc.didCommServices
-      if (supportedProtocols === []) {
-        return services
-      }
-      // map for efficient lookup of sortIndex
-      const supportedProtocolsIndexTable = new Map(supportedProtocols.map((v, i) => [v, i]))
-      // filter out any un-supported
-      const filteredServices = services.filter((service) =>
-        supportedProtocols.includes(service.serviceEndpoint.split(':')[0])
-      )
-      // sort by protocol, if same protocol, sort by priority
-      filteredServices.sort(function (
-        serviceA: { serviceEndpoint: string; priority: number },
-        serviceB: { serviceEndpoint: string; priority: number }
-      ) {
-        const protocolA = serviceA.serviceEndpoint.split(':')[0] || ''
-        const protocolB = serviceB.serviceEndpoint.split(':')[0] || ''
-        const preferred =
-          (supportedProtocolsIndexTable.get(protocolA) || 0) - (supportedProtocolsIndexTable.get(protocolB) || 0)
-        const priority = serviceA.priority - serviceB.priority
-        return preferred || priority
-      })
-      return filteredServices
+      return connection.theirDidDoc.didCommServices
     }
 
     if (connection.role === ConnectionRole.Invitee && connection.invitation) {

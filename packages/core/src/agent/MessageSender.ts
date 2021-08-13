@@ -37,12 +37,8 @@ export class MessageSender {
     this.outboundTransports = []
   }
 
-  public registerOutboundTransporter(outboundTransporter: OutboundTransporter, priority?: number) {
-    if (typeof priority != 'undefined' && priority >= 0 && priority < this.outboundTransports.length) {
-      this.outboundTransports.splice(priority, 0, outboundTransporter)
-    } else {
-      this.outboundTransports.push(outboundTransporter)
-    }
+  public registerOutboundTransporter(outboundTransporter: OutboundTransporter) {
+    this.outboundTransports.push(outboundTransporter)
   }
 
   public get supportedTransportSchemes() {
@@ -97,11 +93,11 @@ export class MessageSender {
   public async sendPackage({
     connection,
     packedMessage,
-    priority = false,
+    options,
   }: {
     connection: ConnectionRecord
     packedMessage: WireMessage
-    priority?: boolean
+    options?: { preferredTransport: string }
   }) {
     // Try to send to already open session
     const session = this.transportService.findSessionByConnectionId(connection.id)
@@ -115,11 +111,13 @@ export class MessageSender {
     }
 
     // Retrieve DIDComm services
-    const allServices = this.transportService.findDidCommServices(
-      connection,
-      priority ? this.supportedTransportSchemes : []
-    )
-    const reachableServices = allServices.filter((s) => !isDidCommTransportQueue(s.serviceEndpoint))
+    const allServices = this.transportService.findDidCommServices(connection)
+    let reachableServices = allServices.filter((s) => !isDidCommTransportQueue(s.serviceEndpoint))
+    if (options && options.preferredTransport) {
+      reachableServices = reachableServices
+        .filter((s) => s.serviceEndpoint.split(':')[0] === options.preferredTransport)
+        .concat(reachableServices)
+    }
     const queueService = allServices.find((s) => isDidCommTransportQueue(s.serviceEndpoint))
 
     this.logger.debug(
@@ -168,7 +166,7 @@ export class MessageSender {
     throw new AriesFrameworkError(`Message is undeliverable to connection ${connection.id} (${connection.theirLabel})`)
   }
 
-  public async sendMessage(outboundMessage: OutboundMessage, priority = false) {
+  public async sendMessage(outboundMessage: OutboundMessage, options?: { preferredTransport: string }) {
     const { connection, payload } = outboundMessage
 
     this.logger.debug('Send outbound message', {
@@ -188,11 +186,13 @@ export class MessageSender {
     }
 
     // Retrieve DIDComm services
-    const allServices = this.transportService.findDidCommServices(
-      connection,
-      priority ? this.supportedTransportSchemes : []
-    )
-    const reachableServices = allServices.filter((s) => !isDidCommTransportQueue(s.serviceEndpoint))
+    const allServices = this.transportService.findDidCommServices(connection)
+    let reachableServices = allServices.filter((s) => !isDidCommTransportQueue(s.serviceEndpoint))
+    if (options && options.preferredTransport) {
+      reachableServices = reachableServices
+        .filter((s) => s.serviceEndpoint.split(':')[0] === options.preferredTransport)
+        .concat(reachableServices)
+    }
     const queueService = allServices.find((s) => isDidCommTransportQueue(s.serviceEndpoint))
 
     this.logger.debug(

@@ -46,6 +46,7 @@ export class Agent {
   public inboundTransporter?: InboundTransporter
   private _isInitialized = false
   public messageSubscription: Subscription
+
   public readonly connections!: ConnectionsModule
   public readonly proofs!: ProofsModule
   public readonly basicMessages!: BasicMessagesModule

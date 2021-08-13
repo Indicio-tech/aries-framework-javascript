@@ -74,6 +74,7 @@ export class MessageSender {
     endpoint: string
   }): Promise<OutboundPackage> {
     const wireMessage = await this.envelopeService.packMessage(message, keys)
+
     return {
       payload: wireMessage,
       responseRequested: message.hasAnyReturnRoute(),
@@ -118,9 +119,6 @@ export class MessageSender {
       connection,
       priority ? this.supportedTransportSchemes : []
     )
-    if (allServices.length === 0) {
-      throw new AriesFrameworkError(`Connection with id ${connection.id} has no service!`)
-    }
     const reachableServices = allServices.filter((s) => !isDidCommTransportQueue(s.serviceEndpoint))
     const queueService = allServices.find((s) => isDidCommTransportQueue(s.serviceEndpoint))
 

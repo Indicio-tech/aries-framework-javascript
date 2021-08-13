@@ -118,8 +118,8 @@ export class Agent {
     this.inboundTransporter = inboundTransporter
   }
 
-  public registerOutboundTransporter(outboundTransporter: OutboundTransporter, priority?: number) {
-    this.messageSender.registerOutboundTransporter(outboundTransporter, priority)
+  public registerOutboundTransporter(outboundTransporter: OutboundTransporter) {
+    this.messageSender.registerOutboundTransporter(outboundTransporter)
   }
 
   public get outboundTransporters() {

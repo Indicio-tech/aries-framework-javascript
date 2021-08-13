@@ -28,7 +28,7 @@ describe('TransportService', () => {
     test(`returns empty array when there is no their DidDoc and role is ${ConnectionRole.Inviter}`, () => {
       const connection = getMockConnection({ id: 'test-123', role: ConnectionRole.Inviter })
       connection.theirDidDoc = undefined
-      expect(transportService.findDidCommServices(connection, ['wss', 'ws', 'https', 'http', 'didcomm'])).toEqual([])
+      expect(transportService.findDidCommServices(connection)).toEqual([])
     })
 
     test(`returns empty array when there is no their DidDoc, no invitation and role is ${ConnectionRole.Invitee}`, () => {

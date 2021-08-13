@@ -195,15 +195,11 @@ export class MessageSender {
 
     // Retrieve DIDComm services
     const allServices = this.transportService.findDidCommServices(connection)
-    let reachableServices = allServices.filter((s) => !isDidCommTransportQueue(s.serviceEndpoint))
+    const reachableServices = allServices.filter((s) => !isDidCommTransportQueue(s.serviceEndpoint))
     if (options && options.preferredTransport) {
-      reachableServices = [
-        ...new Set(
-          reachableServices
-            .filter((s) => s.serviceEndpoint.split(':')[0] === options.preferredTransport)
-            .concat(reachableServices)
-        ),
-      ]
+      reachableServices.sort((f, s) => {
+        return f.serviceEndpoint.split(':')[0] === options.preferredTransport ? 1 : 0
+      })
     }
     const queueService = allServices.find((s) => isDidCommTransportQueue(s.serviceEndpoint))
 

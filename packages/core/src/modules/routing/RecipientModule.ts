@@ -89,7 +89,7 @@ export class RecipientModule {
     else if (mediatorPickupStrategy === MediatorPickupStrategy.Implicit) {
       this.agentConfig.logger.info(`Starting implicit pickup of messages from mediator '${mediator.id}'`)
       const { message, connectionRecord } = await this.connectionService.createTrustPing(mediatorConnection.id)
-      await this.messageSender.sendMessage(createOutboundMessage(connectionRecord, message))
+      await this.messageSender.sendMessage(createOutboundMessage(connectionRecord, message), true)
     } else {
       this.agentConfig.logger.info(
         `Skipping pickup of messages from mediator '${mediator.id}' due to pickup strategy none`
@@ -106,7 +106,7 @@ export class RecipientModule {
 
     const batchPickupMessage = new BatchPickupMessage({ batchSize: 10 })
     const outboundMessage = createOutboundMessage(mediatorConnection, batchPickupMessage)
-    await this.messageSender.sendMessage(outboundMessage)
+    await this.messageSender.sendMessage(outboundMessage, true)
   }
 
   public async setDefaultMediator(mediatorRecord: MediationRecord) {
@@ -116,14 +116,14 @@ export class RecipientModule {
   public async requestMediation(connection: ConnectionRecord): Promise<MediationRecord> {
     const { mediationRecord, message } = await this.mediationRecipientService.createRequest(connection)
     const outboundMessage = createOutboundMessage(connection, message)
-    await this.messageSender.sendMessage(outboundMessage)
+    await this.messageSender.sendMessage(outboundMessage, true)
     return mediationRecord
   }
 
   public async notifyKeylistUpdate(connection: ConnectionRecord, verkey: string) {
     const message = this.mediationRecipientService.createKeylistUpdateMessage(verkey)
     const outboundMessage = createOutboundMessage(connection, message)
-    const response = await this.messageSender.sendMessage(outboundMessage)
+    const response = await this.messageSender.sendMessage(outboundMessage, true)
     return response
   }
 
@@ -173,7 +173,7 @@ export class RecipientModule {
 
     // Send mediation request message
     const outboundMessage = createOutboundMessage(connection, message)
-    await this.messageSender.sendMessage(outboundMessage)
+    await this.messageSender.sendMessage(outboundMessage, true)
 
     const event = await firstValueFrom(subject)
     return event.payload.mediationRecord

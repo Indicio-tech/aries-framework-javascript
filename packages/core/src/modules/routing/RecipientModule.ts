@@ -1,7 +1,7 @@
+import type { Logger } from '../../logger'
 import type { ConnectionRecord } from '../connections'
 import type { MediationStateChangedEvent } from './RoutingEvents'
 import type { MediationRecord } from './index'
-import type { Logger } from '../../logger'
 
 import { firstValueFrom, interval, ReplaySubject } from 'rxjs'
 import { filter, first, takeUntil, timeout } from 'rxjs/operators'
@@ -12,6 +12,7 @@ import { Dispatcher } from '../../agent/Dispatcher'
 import { EventEmitter } from '../../agent/EventEmitter'
 import { MessageSender } from '../../agent/MessageSender'
 import { createOutboundMessage } from '../../agent/helpers'
+import { AriesFrameworkError } from '../../error'
 import { ConnectionInvitationMessage } from '../connections'
 import { ConnectionService } from '../connections/services'
 
@@ -23,7 +24,6 @@ import { MediationGrantHandler } from './handlers/MediationGrantHandler'
 import { BatchPickupMessage } from './messages/BatchPickupMessage'
 import { MediationState } from './models/MediationState'
 import { MediationRecipientService } from './services/MediationRecipientService'
-import { AriesFrameworkError } from '../../error'
 
 @scoped(Lifecycle.ContainerScoped)
 export class RecipientModule {
@@ -208,16 +208,16 @@ export class RecipientModule {
         routing: routing,
       })
       this.logger.debug('Processed invitation')
-      let { message, connectionRecord: connectionRecord } = await this.connectionService.createRequest(
+      const { message, connectionRecord: connectionRecord } = await this.connectionService.createRequest(
         invitationConnectionRecord.id
       )
       const outbound = createOutboundMessage(connectionRecord, message)
       await this.messageSender.sendMessage(outbound)
 
       // TODO: add timeout to returnWhenIsConnected
-      connectionRecord = await this.connectionService.returnWhenIsConnected(connectionRecord.id)
+      const completedConnectionRecord = await this.connectionService.returnWhenIsConnected(connectionRecord.id)
       this.logger.debug('Connection completed, requesting mediation')
-      const mediationRecord = await this.requestAndAwaitGrant(connectionRecord, 60000) // TODO: put timeout as a config parameter
+      const mediationRecord = await this.requestAndAwaitGrant(completedConnectionRecord, 60000) // TODO: put timeout as a config parameter
       this.logger.debug('Mediation Granted, setting as default mediator')
       await this.setDefaultMediator(mediationRecord)
       this.logger.debug('Default mediator set')

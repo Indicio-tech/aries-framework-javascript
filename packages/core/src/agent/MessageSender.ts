@@ -1,18 +1,19 @@
-import type { DidCommService, ConnectionRecord, Connection } from '../modules/connections'
+import type { ConnectionRecord } from '../modules/connections'
 import type { OutboundTransporter } from '../transport/OutboundTransporter'
-import type { OutboundMessage, OutboundPackage, WireMessage } from '../types'
-import type { AgentMessage } from './AgentMessage'
+import type { OutboundPackage, WireMessage } from '../types'
 import type { EnvelopeKeys } from './EnvelopeService'
 import type { TransportSession } from './TransportService'
 
 import { inject, Lifecycle, scoped } from 'tsyringe'
 
 import { DID_COMM_TRANSPORT_QUEUE, InjectionSymbols } from '../constants'
+import { DidCommService } from '../modules/connections'
 import { ReturnRouteTypes } from '../decorators/transport/TransportDecorator'
 import { AriesFrameworkError } from '../error'
 import { Logger } from '../logger'
 import { MessageRepository } from '../storage/MessageRepository'
 
+import { AgentMessage } from './AgentMessage'
 import { EnvelopeService } from './EnvelopeService'
 import { TransportService } from './TransportService'
 
@@ -150,18 +151,13 @@ export class MessageSender {
   }
 
 
-  public async sendMessage(
+  public async sendMessagey(
     outboundMessage: OutboundMessage, 
     options?: { 
       transportPriority?: TransportPriorityOptions
     }
   ) {
-    const { connection, payload } = outboundMessage
-
-    this.logger.debug('Send outbound message', {
-      message: payload,
-      connectionId: connection.id,
-    })
+    
 
     // Try to send to already open session
     const session = this.transportService.findSessionByConnectionId(connection.id)
@@ -200,20 +196,82 @@ export class MessageSender {
         )
       }
     }
+  }
+
+  //private async sortConnectionServices({connection}){}
+  //sorts services for connection
+
+  //Sends a message to a connection
+  public async sendMessagex({
+    connection,
+    message
+  }: {
+    connection: ConnectionRecord
+    message: AgentMessage | WireMessage
+  }){
+    this.logger.debug(`Going to send outbound message to connection '${connection.id}'`, {messageType: (message instanceof AgentMessage? 'AgentMessage' : 'WireMessage')})
+    if(message instanceof AgentMessage){
+      message
+    } else {
+      message
+    }
+    connection.verkey
+  }
+
+  //SenderKey is required if payload is a service AgentMessage
+  public async sendMessage({
+    message,
+    recipient,
+    senderKey,
+  }: {
+    message: AgentMessage | WireMessage
+    recipient: DidCommService | ConnectionRecord
+    senderKey?: string
+  }){
+    if(recipient instanceof DidCommService){
+    this.logger.debug(`Going to send outbound message`)
+    this.logger.debug(`Going to send outbound message to service '${service.id}'`, { service, message})
+
+    let wireMessage:WireMessage
+    let returnRoute:boolean = false
+
+    if(message instanceof AgentMessage){
+      //Pack Agent Message
+      this.logger.debug(`Packing Agent Message into wire message`)
+      
+      if(!senderKey){
+        throw new AriesFrameworkError('A sender key must be given when sending AgentMessages')
+      }
+    
+      const {payload, responseRequested} = await this.packMessage({ 
+        message, 
+        keys: {
+          recipientKeys: service.recipientKeys,
+          routingKeys: service.routingKeys || [],
+          senderKey,
+        }, 
+        endpoint: service.serviceEndpoint 
+      })
+      wireMessage = payload
+      returnRoute = responseRequested!
+
+      this.logger.debug('Agent message packed')
+    } else {
+      wireMessage = message
+    }
+    
+    await this.sendWireMessageToEndpoint({
+      endpoint: service.serviceEndpoint,
+      wireMessage,
+      returnRoute
+    })
 
     // We didn't succeed to send the message over open session, or directly to serviceEndpoint
     // If the other party shared a queue service endpoint in their did doc we queue the message
-    if (queueService) {
-      this.logger.debug(`Queue message for connection ${connection.id} (${connection.theirLabel})`)
+    if (queue) {
+      this.logger.debug(`Queue message for connection ${queue.connection.id}`)
 
-      const keys = {
-        recipientKeys: queueService.recipientKeys,
-        routingKeys: queueService.routingKeys || [],
-        senderKey: connection.verkey,
-      }
-
-      const wireMessage = await this.envelopeService.packMessage(payload, keys)
-      this.messageRepository.add(connection.id, wireMessage)
+      this.messageRepository.add(queue.connection.id, wireMessage)
       return
     }
 
@@ -225,7 +283,50 @@ export class MessageSender {
     throw new AriesFrameworkError(`Message is undeliverable to connection ${connection.id} (${connection.theirLabel})`)
   }
 
-  public async sendMessageToService({
+  private async sendWireMessageToEndpoint({
+    endpoint,
+    wireMessage,
+    returnRoute
+  }: {
+    endpoint: string
+    wireMessage: WireMessage
+    returnRoute?: boolean
+  }) {
+    this.logger.debug(`Sending Wire Message to endpoint '${endpoint}' with return route ${returnRoute ? 'true' : 'false'}`)
+
+    if (this.outboundTransports.length === 0) {
+      throw new AriesFrameworkError('Agent has no outbound transporters!')
+    }
+
+    const scheme = endpoint.split(':')[0]
+    for (const transport of this.outboundTransporters) {
+      if (transport.supportedSchemes.includes(scheme)) {
+        await transport.sendMessage({
+          payload: wireMessage,
+          endpoint,
+          responseRequested: returnRoute
+        })
+        return
+      }
+    }
+
+    throw new AriesFrameworkError(`Agent has no registered transporters for this endpoint '${endpoint}' using transport scheme '${scheme}'!`)
+  }
+  
+  
+
+
+
+
+  // sortConnectionServices({connection})
+  // //sorts services for connection
+  // sendMessage({service, connection?})
+  // //uses sortConnectionServices() if needed
+  // sendWireMessage({service, connection?})
+  // //uses sortConnectionServices() if needed
+  // sendWireMessageToService({service})
+  // //sendMessageToService()
+  public async sendAgentMessageToService({
     message,
     service,
     senderKey,
@@ -236,10 +337,6 @@ export class MessageSender {
     senderKey: string
     returnRoute?: boolean
   }) {
-    if (this.outboundTransports.length === 0) {
-      throw new AriesFrameworkError('Agent has no outbound transporter!')
-    }
-
     this.logger.debug(`Sending outbound message to service:`, { messageId: message.id, service })
 
     const keys = {
@@ -253,11 +350,29 @@ export class MessageSender {
       message.setReturnRouting(ReturnRouteTypes.all)
     }
 
-    const outboundPackage = await this.packMessage({ message, keys, endpoint: service.serviceEndpoint })
-    outboundPackage.endpoint = service.serviceEndpoint
-    const protocol = outboundPackage.endpoint.split(':')[0]
+    const outboundPackage:OutboundPackage = await this.packMessage({ message, keys, endpoint: service.serviceEndpoint })
+    await this.sendMessageToService(outboundPackage)
+  }
+
+  //Sends a message to a given registered agent
+  private async sendMessageToServicey({
+    message,
+    service,
+    senderKey,
+    returnRoute,
+  }: {
+    message: AgentMessage
+    service: DidCommService
+    senderKey: string
+    returnRoute?: boolean
+  }) {
+    if (this.outboundTransports.length === 0) {
+      throw new AriesFrameworkError('Agent has no outbound transporters!')
+    }
+
+    const scheme = endpoint.split(':')[0]
     for (const transport of this.outboundTransporters) {
-      if (transport.supportedSchemes.includes(protocol)) {
+      if (transport.supportedSchemes.includes(scheme)) {
         await transport.sendMessage(outboundPackage)
         break
       }

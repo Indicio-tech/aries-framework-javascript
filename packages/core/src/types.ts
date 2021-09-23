@@ -58,19 +58,8 @@ export interface UnpackedMessageContext {
   recipientVerkey?: string
 }
 
-export interface OutboundMessage<T extends AgentMessage = AgentMessage> {
-  payload: T
-  connection: ConnectionRecord
-}
-
-export interface OutboundServiceMessage<T extends AgentMessage = AgentMessage> {
-  payload: T
-  service: DidCommService
-  senderKey: string
-}
-
 export interface OutboundPackage {
   payload: WireMessage
+  endpoint: string
   responseRequested?: boolean
-  endpoint?: string
 }

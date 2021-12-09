@@ -1,3 +1,4 @@
+import type { TrustPingMessageOptions } from './messages'
 import type { ConnectionRecord } from './repository/ConnectionRecord'
 
 import { Lifecycle, scoped } from 'tsyringe'
@@ -15,7 +16,7 @@ import {
   TrustPingMessageHandler,
   TrustPingResponseMessageHandler,
 } from './handlers'
-import { ConnectionInvitationMessage, TrustPingMessageOptions } from './messages'
+import { ConnectionInvitationMessage } from './messages'
 import { ConnectionService } from './services/ConnectionService'
 import { TrustPingService } from './services/TrustPingService'
 

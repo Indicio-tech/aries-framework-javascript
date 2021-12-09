@@ -178,7 +178,10 @@ export class ConnectionsModule {
    * @returns connection record
    */
   public async sendTrustPing(connectionId: string, options: TrustPingMessageOptions = {}): Promise<ConnectionRecord> {
-    const { message, connectionRecord: connectionRecord } = await this.connectionService.createTrustPing(connectionId, options)
+    const { message, connectionRecord: connectionRecord } = await this.connectionService.createTrustPing(
+      connectionId,
+      options
+    )
 
     const outbound = createOutboundMessage(connectionRecord, message)
     await this.messageSender.sendMessage(outbound)

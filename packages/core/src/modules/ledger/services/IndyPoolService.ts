@@ -39,7 +39,7 @@ export class IndyPoolService {
   /**
    * Create connections to all ledger pools
    */
-   public async connectToPools() {
+  public async connectToPools() {
     const poolsPromises = this.pools.map((pool) => {
       return pool.connect()
     })

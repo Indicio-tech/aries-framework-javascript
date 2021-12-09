@@ -75,7 +75,7 @@ export class IndyPool {
   }
 
   public async connect() {
-    this.poolConnected = (async ()=>{
+    this.poolConnected = (async () => {
       const poolName = this.poolConfig.id
       const genesisPath = await this.getGenesisPath()
 

@@ -5,8 +5,8 @@ import type { ConnectionRecord } from '../connections'
 import type { MediationStateChangedEvent } from './RoutingEvents'
 import type { MediationRecord } from './index'
 
-import { firstValueFrom, interval, ReplaySubject } from 'rxjs'
-import { filter, first, takeUntil, throttleTime, timeout, delay, tap } from 'rxjs/operators'
+import { firstValueFrom, interval, ReplaySubject, timer } from 'rxjs'
+import { filter, first, takeUntil, throttleTime, timeout, tap, delayWhen } from 'rxjs/operators'
 import { Lifecycle, scoped } from 'tsyringe'
 
 import { AgentConfig } from '../../agent/AgentConfig'
@@ -92,9 +92,8 @@ export class RecipientModule {
   }
 
   private async openMediationWebSocket(mediator: MediationRecord) {
-    const { message, connectionRecord } = await this.connectionService.createTrustPing(mediator.connectionId, {
-      responseRequested: false,
-    })
+    //Send responseRequested: false in order to trigger delivery of queued messages
+    const { message, connectionRecord } = await this.connectionService.createTrustPing(mediator.connectionId, { responseRequested: false })
 
     const websocketSchemes = ['ws', 'wss']
     const hasWebSocketTransport = connectionRecord.theirDidDoc?.didCommServices?.some((s) =>
@@ -140,7 +139,7 @@ export class RecipientModule {
         // Increase the interval (recursive back-off)
         tap(() => (interval *= 2)),
         // Wait for interval time before reconnecting
-        delay(interval)
+        delayWhen(() => timer(interval))
       )
       .subscribe(async () => {
         this.logger.warn(

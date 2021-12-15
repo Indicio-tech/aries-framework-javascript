@@ -164,11 +164,6 @@ export class Agent {
       await this.wallet.initPublicDid({ seed: publicDidSeed })
     }
 
-    if (connectLedgersOnStart || connectLedgersOnStart === undefined) {
-      // As long as value isn't false we will async connect to all genesis pools on startup
-      this.ledger.connectToGenesis()
-    }
-
     for (const transport of this.inboundTransports) {
       transport.start(this)
     }
@@ -185,6 +180,19 @@ export class Agent {
     }
 
     await this.mediationRecipient.initialize()
+
+    // As long as value isn't false we will async connect to all genesis pools on startup
+    if (connectLedgersOnStart || connectLedgersOnStart === undefined) {
+      //Anonymous function so this runs async but we can still handle errors here.
+      ;(async () => {
+        try {
+          await this.ledger.connectToGenesis()
+        } catch (error) {
+          //If it fails here then log it and try to connect again when we need to.
+          this.logger.warn('Error connecting to ledger, will try to reconnect when needed.')
+        }
+      })()
+    }
 
     this._isInitialized = true
   }

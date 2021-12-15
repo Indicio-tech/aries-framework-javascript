@@ -75,6 +75,7 @@ export class IndyPool {
   }
 
   public async connect() {
+    //Call anonymous function and save the returned promise from it
     this.poolConnected = (async () => {
       const poolName = this.poolConfig.id
       const genesisPath = await this.getGenesisPath()
@@ -136,8 +137,13 @@ export class IndyPool {
   private async getPoolHandle() {
     if (this.poolConnected != undefined) {
       //If we have tried to already connect to pool wait for it
-      await this.poolConnected
+      try {
+        await this.poolConnected
+      } catch (error) {
+        this.logger.error('Connection to pool: ' + this.poolConfig.genesisPath + ' failed.')
+      }
     }
+
     if (!this._poolHandle) {
       return this.connect()
     }

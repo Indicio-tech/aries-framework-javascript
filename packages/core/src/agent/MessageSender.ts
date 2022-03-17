@@ -20,6 +20,8 @@ import { MessageValidator } from '../utils/MessageValidator'
 
 import { EnvelopeService } from './EnvelopeService'
 import { TransportService } from './TransportService'
+import { parseDid } from '../modules/dids/domain/parse'
+import { DidKey } from '../modules/dids'
 
 export interface TransportPriorityOptions {
   schemes: string[]
@@ -54,6 +56,28 @@ export class MessageSender {
     this.outboundTransports.push(outboundTransport)
   }
 
+  private resolveKeys(keys: string[]): Array<string> {
+    // Resolve dids to retrieve keys for encryption
+    return keys.map((key) => {
+      if (key.startsWith('did:')){
+        const didMethod = parseDid(key).method
+
+        // TODO: Resolve keys for other methods than did:key
+        if(didMethod === 'key'){
+          const publicKeyBase58 = DidKey.fromDid(key).key.publicKeyBase58
+          console.log("Recipient Key PublicKeyBase58", publicKeyBase58)
+          return publicKeyBase58
+        } 
+        else{
+          throw new AriesFrameworkError(`Unsupported did method '${didMethod}' for encrypting message, supported did methods: ['did:key']`)
+        }
+      }
+      else {
+        return key
+      }
+    })
+  }
+
   public async packMessage({
     keys,
     message,
@@ -63,7 +87,11 @@ export class MessageSender {
     message: AgentMessage
     endpoint: string
   }): Promise<OutboundPackage> {
-    const encryptedMessage = await this.envelopeService.packMessage(message, keys)
+    const encryptedMessage = await this.envelopeService.packMessage(message, {
+      senderKey: keys.senderKey,
+      recipientKeys: this.resolveKeys(keys.recipientKeys),
+      routingKeys: this.resolveKeys(keys.routingKeys)
+    })
 
     return {
       payload: encryptedMessage,
@@ -240,21 +268,6 @@ export class MessageSender {
     throw new AriesFrameworkError(`Message is undeliverable to connection ${connection.id} (${connection.theirLabel})`)
   }
 
-  public async sendMessageToOutOfBand(
-    outOfBandRecord: OutOfBandRecord,
-    connectionRecord: ConnectionRecord,
-    message: AgentMessage
-  ) {
-    // TODO iterate over all services
-    const shouldUseReturnRoute = !this.transportService.hasInboundEndpoint(connectionRecord.didDoc)
-    return this.sendMessageToService({
-      message,
-      service: new DidCommService(outOfBandRecord.outOfBandMessage.services[0] as DidCommService),
-      senderKey: connectionRecord.verkey,
-      returnRoute: shouldUseReturnRoute,
-    })
-  }
-
   public async sendMessageToService({
     message,
     service,
@@ -302,6 +315,9 @@ export class MessageSender {
     const outboundPackage = await this.packMessage({ message, keys, endpoint: service.serviceEndpoint })
     outboundPackage.endpoint = service.serviceEndpoint
     outboundPackage.connectionId = connectionId
+    if (!service.protocolScheme){
+      throw new AriesFrameworkError('Unable to identify service protocol scheme for outbound transport')
+    }
     for (const transport of this.outboundTransports) {
       if (transport.supportedSchemes.includes(service.protocolScheme)) {
         await transport.sendMessage(outboundPackage)

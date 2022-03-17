@@ -2,7 +2,7 @@ import type { PlaintextMessage } from '../../../types'
 import type { HandshakeProtocol } from '../../connections'
 import type { DidCommService } from '../../dids'
 
-import { Expose, Type } from 'class-transformer'
+import { Expose, Type, Transform } from 'class-transformer'
 import { ArrayNotEmpty, Equals, IsArray, IsInstance, IsOptional, IsUrl, ValidateNested } from 'class-validator'
 import { parseUrl } from 'query-string'
 
@@ -12,6 +12,8 @@ import { AriesFrameworkError } from '../../../error'
 import { JsonEncoder } from '../../../utils/JsonEncoder'
 import { JsonTransformer } from '../../../utils/JsonTransformer'
 import { MessageValidator } from '../../../utils/MessageValidator'
+
+import { replaceLegacyDidSovPrefix } from '../../../utils/messageType'
 
 interface OutOfBandMessageOptions {
   id?: string
@@ -85,8 +87,11 @@ export class OutOfBandMessage extends AgentMessage {
   }
 
   @Equals(OutOfBandMessage.type)
+  @Transform(({ value }) => replaceLegacyDidSovPrefix(value), {
+    toClassOnly: true,
+  })
   public readonly type = OutOfBandMessage.type
-  public static readonly type = `https://didcomm.org/out-of-band/1.1/invitation`
+  public static readonly type = `https://didcomm.org/out-of-band/1.0/invitation`
 
   public readonly label!: string
 
@@ -98,6 +103,9 @@ export class OutOfBandMessage extends AgentMessage {
   public readonly accept?: string[]
 
   @Expose({ name: 'handshake_protocols' })
+  @Transform(({ value }) => value.map(replaceLegacyDidSovPrefix), {
+    toClassOnly: true
+  })
   public handshakeProtocols?: HandshakeProtocol[]
 
   @Expose({ name: 'requests~attach' })

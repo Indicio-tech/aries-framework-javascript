@@ -11,10 +11,19 @@ import { Lifecycle, scoped } from 'tsyringe'
 import { DID_COMM_TRANSPORT_QUEUE } from '../constants'
 import { ConnectionRole, DidExchangeRole } from '../modules/connections/models'
 import { DidCommService } from '../modules/dids/domain/service'
+import { DidResolverService } from '../modules/dids'
+import { AriesFrameworkError } from '../error'
 
 @scoped(Lifecycle.ContainerScoped)
 export class TransportService {
+  private didResolverService: DidResolverService
   public transportSessionTable: TransportSessionTable = {}
+
+  public constructor(
+    didResolverService: DidResolverService
+  ) {
+    this.didResolverService = didResolverService
+  }
 
   public saveSession(session: TransportSession) {
     this.transportSessionTable[session.id] = session
@@ -40,13 +49,15 @@ export class TransportService {
     delete this.transportSessionTable[session.id]
   }
 
-  public findDidCommServices(connection: ConnectionRecord): Array<DidCommService | IndyAgentService> {
+  public async findDidCommServices(connection: ConnectionRecord, outOfBandRecord?: OutOfBandRecord): Promise<Array<DidCommService | IndyAgentService>> {
+    // Return DIDDoc stored in the connectionRecord
     if (connection.theirDidDoc) {
       return connection.theirDidDoc.didCommServices
     }
 
+    //Return service from legacy connections invitation (connections v1)
     if (
-      (connection.role === ConnectionRole.Invitee || connection.role === DidExchangeRole.Requester) &&
+      (connection.role === ConnectionRole.Invitee) &&
       connection.invitation
     ) {
       const { invitation } = connection
@@ -60,6 +71,38 @@ export class TransportService {
         return [service]
       }
     }
+
+    // Return service(s) from out of band invitation
+    // TODO: Abstract into separate helper class/method somewhere?
+    if ((connection.role === ConnectionRole.Invitee || connection.role === DidExchangeRole.Requester ) && outOfBandRecord) {
+      
+      let didCommServices:Array<DidCommService | IndyAgentService> = []
+      // Iterate through the out of band invitation services
+      for(const service of outOfBandRecord.outOfBandMessage.services) {
+        
+        // Resolve dids to DIDDocs to retrieve services
+        if(typeof service === 'string'){
+          const {
+            didDocument,
+            didResolutionMetadata: { error, message },
+          } = await this.didResolverService.resolve(service)
+    
+          if (!didDocument) {
+            throw new AriesFrameworkError (
+              `Unable to resolve did document for did '${service}': ${error} ${message}`
+            )
+          }
+    
+          didCommServices = [...didCommServices, ...didDocument.didCommServices]
+        }
+        // Inline service blocks can just be pushed
+        else{
+          didCommServices.push(service)
+        }
+      }
+      return didCommServices
+    }
+
     return []
   }
 }

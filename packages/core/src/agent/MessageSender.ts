@@ -107,7 +107,7 @@ export class MessageSender {
     }
 
     // Retrieve DIDComm services
-    const { services, queueService } = await this.retrieveServicesByConnection(connection, options?.transportPriority)
+    const { services, queueService } = await this.retrieveServicesByConnection({connection, transportPriority: options?.transportPriority})
 
     if (this.outboundTransports.length === 0 && !queueService) {
       throw new AriesFrameworkError('Agent has no outbound transport!')
@@ -187,7 +187,7 @@ export class MessageSender {
     }
 
     // Retrieve DIDComm services
-    const { services, queueService } = await this.retrieveServicesByConnection(connection, options?.transportPriority)
+    const { services, queueService } = await this.retrieveServicesByConnection({connection, transportPriority: options?.transportPriority, outOfBandRecord: outOfBand})
 
     // Loop trough all available services and try to send the message
     for await (const service of services) {
@@ -310,9 +310,15 @@ export class MessageSender {
     }
   }
 
-  private async retrieveServicesByConnection(
+  private async retrieveServicesByConnection({
+    connection,
+    transportPriority,
+    outOfBandRecord
+  }: {
     connection: ConnectionRecord,
-    transportPriority?: TransportPriorityOptions
+    transportPriority?: TransportPriorityOptions,
+    outOfBandRecord?: OutOfBandRecord
+  }
   ) {
     this.logger.debug(`Retrieving services for connection '${connection.id}' (${connection.theirLabel})`, {
       transportPriority,
@@ -337,10 +343,10 @@ export class MessageSender {
 
       didCommServices = didDocument.didCommServices
     }
-    // Old school method, did document is stored inside the connection record
+    // Retrieve did document stored inside the connection record OR the services inside the invitation
     else {
       // Retrieve DIDComm services
-      didCommServices = this.transportService.findDidCommServices(connection)
+      didCommServices = await this.transportService.findDidCommServices(connection, outOfBandRecord)
     }
 
     // Separate queue service out

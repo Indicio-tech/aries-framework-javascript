@@ -765,6 +765,7 @@ export class ConnectionService {
     invitation?: ConnectionInvitationMessage
     alias?: string
     routing: Routing
+    theirDid?: string,
     theirLabel?: string
     autoAcceptConnection?: boolean
     multiUseInvitation: boolean
@@ -815,6 +816,7 @@ export class ConnectionService {
       invitation: options.invitation,
       alias: options.alias,
       theirLabel: options.theirLabel,
+      theirDid: options.theirDid,
       autoAcceptConnection: options.autoAcceptConnection,
       imageUrl: options.imageUrl,
       multiUseInvitation: options.multiUseInvitation,

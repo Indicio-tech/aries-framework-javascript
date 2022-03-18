@@ -225,7 +225,7 @@ export class MessageSender {
 
         await this.sendMessageToService({
           message: payload,
-          service,
+          service: new DidCommService(service as DidCommService),
           senderKey: connection.verkey,
           returnRoute: shouldUseReturnRoute,
           connectionId: connection.id,

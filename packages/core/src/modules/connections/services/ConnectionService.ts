@@ -20,7 +20,7 @@ import { AriesFrameworkError } from '../../../error'
 import { JsonTransformer } from '../../../utils/JsonTransformer'
 import { MessageValidator } from '../../../utils/MessageValidator'
 import { Wallet } from '../../../wallet/Wallet'
-import { IndyAgentService } from '../../dids'
+import { DidKey, IndyAgentService } from '../../dids'
 import { ConnectionEventTypes } from '../ConnectionEvents'
 import { ConnectionProblemReportError, ConnectionProblemReportReason } from '../errors'
 import {
@@ -457,6 +457,11 @@ export class ConnectionService {
       invitationKey = outOfBandRecord.getTags().recipientKey
     } else {
       invitationKey = connectionRecord.getTags().invitationKey
+    }
+
+    // TODO: Resolve all did methods here
+    if (invitationKey?.startsWith('did:key')) {
+      invitationKey = DidKey.fromDid(invitationKey).key.publicKeyBase58
     }
 
     if (signerVerkey !== invitationKey) {

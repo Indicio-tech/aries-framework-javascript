@@ -26,7 +26,7 @@ interface OutOfBandMessageOptions {
   imageUrl?: string
 }
 
-export class OutOfBandMessage extends AgentMessage {
+export class OutOfBandMessageBase extends AgentMessage {
   public constructor(options: OutOfBandMessageOptions) {
     super()
 
@@ -64,35 +64,6 @@ export class OutOfBandMessage extends AgentMessage {
     return invitationUrl
   }
 
-  public static async fromUrl(invitationUrl: string) {
-    const parsedUrl = parseUrl(invitationUrl).query
-    const encodedInvitation = parsedUrl['oob']
-
-    if (typeof encodedInvitation === 'string') {
-      const invitationJson = JsonEncoder.fromBase64(encodedInvitation)
-      const invitation = this.fromJson(invitationJson)
-
-      return invitation
-    } else {
-      throw new AriesFrameworkError(
-        'InvitationUrl is invalid. It needs to contain one, and only one, of the following parameters; `oob`'
-      )
-    }
-  }
-
-  public static async fromJson(json: Record<string, unknown>) {
-    const invitation = JsonTransformer.fromJSON(json, OutOfBandMessage)
-    await MessageValidator.validate(invitation)
-    return invitation
-  }
-
-  @Equals(OutOfBandMessage.type)
-  @Transform(({ value }) => replaceLegacyDidSovPrefix(value), {
-    toClassOnly: true,
-  })
-  public readonly type = OutOfBandMessage.type
-  public static readonly type = `https://didcomm.org/out-of-band/1.0/invitation`
-
   public readonly label!: string
 
   @Expose({ name: 'goal_code' })
@@ -128,4 +99,66 @@ export class OutOfBandMessage extends AgentMessage {
   @IsOptional()
   @IsUrl()
   public readonly imageUrl?: string
+}
+
+export class V1OutOfBandMessage extends OutOfBandMessageBase {
+  @Equals(V1OutOfBandMessage.type)
+  @Transform(({ value }) => replaceLegacyDidSovPrefix(value), {
+    toClassOnly: true,
+  })
+  public readonly type = V1OutOfBandMessage.type
+  public static readonly type = `https://didcomm.org/out-of-band/1.0/invitation`
+
+  public static async fromJson(json: Record<string, unknown>) {
+    const invitation = JsonTransformer.fromJSON(json, V1OutOfBandMessage)
+    await MessageValidator.validate(invitation)
+    return invitation
+  }
+
+  public static async fromUrl(invitationUrl: string) {
+    const parsedUrl = parseUrl(invitationUrl).query
+    const encodedInvitation = parsedUrl['oob']
+
+    if (typeof encodedInvitation === 'string') {
+      const invitationJson = JsonEncoder.fromBase64(encodedInvitation)
+      const invitation = this.fromJson(invitationJson)
+
+      return invitation
+    } else {
+      throw new AriesFrameworkError(
+        'InvitationUrl is invalid. It needs to contain one, and only one, of the following parameters; `oob`'
+      )
+    }
+  }
+}
+
+export class V1_1OutOfBandMessage extends OutOfBandMessageBase{
+  @Equals(V1_1OutOfBandMessage.type)
+  @Transform(({ value }) => replaceLegacyDidSovPrefix(value), {
+    toClassOnly: true,
+  })
+  public readonly type = V1_1OutOfBandMessage.type
+  public static readonly type = `https://didcomm.org/out-of-band/1.1/invitation`
+
+  public static async fromJson(json: Record<string, unknown>) {
+    const invitation = JsonTransformer.fromJSON(json, V1_1OutOfBandMessage)
+    await MessageValidator.validate(invitation)
+    return invitation
+  }
+
+  public static async fromUrl(invitationUrl: string) {
+    const parsedUrl = parseUrl(invitationUrl).query
+    const encodedInvitation = parsedUrl['oob']
+
+    if (typeof encodedInvitation === 'string') {
+      const invitationJson = JsonEncoder.fromBase64(encodedInvitation)
+      const invitation = this.fromJson(invitationJson)
+
+      return invitation
+    } else {
+      throw new AriesFrameworkError(
+        'InvitationUrl is invalid. It needs to contain one, and only one, of the following parameters; `oob`'
+      )
+    }
+  }
 }

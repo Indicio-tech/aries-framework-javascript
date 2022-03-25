@@ -23,8 +23,11 @@ import { OutOfBandRole } from './domain/OutOfBandRole'
 import { OutOfBandState } from './domain/OutOfBandState'
 import { HandshakeReuseHandler } from './handlers'
 import { convertToNewInvitation } from './helpers'
-import { OutOfBandMessage, HandshakeReuseMessage } from './messages'
+import { V1HandshakeReuseMessage, V1_1OutOfBandMessage, V1OutOfBandMessage, V1_1HandshakeReuseMessage } from './messages'
 import { OutOfBandRecord } from './repository/OutOfBandRecord'
+import { JsonEncoder } from '../../utils'
+import { replaceLegacyDidSovPrefix } from '../../utils/messageType'
+import { HandshakeReuseAcceptedHandler } from './handlers/HandshakeReuseAcceptedHandler'
 
 const didCommProfiles = ['didcomm/aip1', 'didcomm/aip2;env=rfc19']
 
@@ -158,7 +161,7 @@ export class OutOfBandModule {
       services,
       handshakeProtocols,
     }
-    const outOfBandMessage = new OutOfBandMessage(options)
+    const outOfBandMessage = new V1OutOfBandMessage(options)
 
     if (messages) {
       messages.forEach((message) => {
@@ -205,8 +208,17 @@ export class OutOfBandModule {
    */
   public async parseInvitation(invitationUrl: string) {
     const parsedUrl = parseUrl(invitationUrl).query
-    if (parsedUrl['oob']) {
-      const outOfBandMessage = await OutOfBandMessage.fromUrl(invitationUrl)
+    if (parsedUrl['oob'] && typeof parsedUrl === 'string') {
+      const invitationJson = JsonEncoder.fromBase64(parsedUrl['oob'])
+
+      //Determine if v1 or v1.1
+      let outOfBandMessage: V1OutOfBandMessage | V1_1OutOfBandMessage
+      if(replaceLegacyDidSovPrefix(invitationJson.type) === V1OutOfBandMessage.type){
+        outOfBandMessage = await V1OutOfBandMessage.fromJson(invitationJson)
+      }else{
+        outOfBandMessage = await V1_1OutOfBandMessage.fromJson(invitationJson)
+      }
+
       return outOfBandMessage
     } else if (parsedUrl['c_i'] || parsedUrl['d_m']) {
       const invitation = await ConnectionInvitationMessage.fromUrl(invitationUrl)
@@ -239,7 +251,7 @@ export class OutOfBandModule {
    * @returns OutOfBand record and connection record if one has been created.
    */
   public async receiveInvitation(
-    outOfBandMessage: OutOfBandMessage,
+    outOfBandMessage: V1OutOfBandMessage | V1_1OutOfBandMessage,
     config: ReceiveOutOfBandMessageConfig = {}
   ): Promise<{ outOfBandRecord: OutOfBandRecord; connectionRecord?: ConnectionRecord }> {
     const { handshakeProtocols } = outOfBandMessage
@@ -510,13 +522,20 @@ export class OutOfBandModule {
     })
   }
 
-  private async sendReuse(outOfBandMessage: OutOfBandMessage, connection: ConnectionRecord) {
-    const message = new HandshakeReuseMessage({ parentThreadId: outOfBandMessage.id })
+  private async sendReuse(outOfBandMessage: V1OutOfBandMessage | V1_1OutOfBandMessage, connection: ConnectionRecord) {
+    let message
+    if(outOfBandMessage.type === V1OutOfBandMessage.type){
+      message = new V1HandshakeReuseMessage({ parentThreadId: outOfBandMessage.id })
+    }else{
+      message = new V1_1HandshakeReuseMessage({ parentThreadId: outOfBandMessage.id })
+    }
+    
     const outbound = createOutboundMessage(connection, message)
     await this.messageSender.sendMessage(outbound)
   }
 
   private registerHandlers(dispatcher: Dispatcher) {
     dispatcher.registerHandler(new HandshakeReuseHandler(this.logger))
+    dispatcher.registerHandler(new HandshakeReuseAcceptedHandler(this.logger, this.outOfBandService))
   }
 }

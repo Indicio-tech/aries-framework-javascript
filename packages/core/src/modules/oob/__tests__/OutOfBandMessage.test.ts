@@ -2,7 +2,7 @@ import type { ValidationError } from 'class-validator'
 
 import { JsonEncoder } from '../../../utils/JsonEncoder'
 import { JsonTransformer } from '../../../utils/JsonTransformer'
-import { OutOfBandMessage } from '../messages/OutOfBandMessage'
+import { V1OutOfBandMessage } from '../messages/OutOfBandMessage'
 
 describe('OutOfBandMessage', () => {
   describe('toUrl', () => {
@@ -17,7 +17,7 @@ describe('OutOfBandMessage', () => {
         goal: 'To issue a Faber College Graduate credential',
         handshake_protocols: ['https://didcomm.org/didexchange/1.0', 'https://didcomm.org/connections/1.0'],
       }
-      const invitation = JsonTransformer.fromJSON(json, OutOfBandMessage)
+      const invitation = JsonTransformer.fromJSON(json, V1OutOfBandMessage)
       const invitationUrl = invitation.toUrl({
         domain,
       })
@@ -31,7 +31,7 @@ describe('OutOfBandMessage', () => {
       const invitationUrl =
         'http://example.com/ssi?oob=eyJAdHlwZSI6Imh0dHBzOi8vZGlkY29tbS5vcmcvb3V0LW9mLWJhbmQvMS4xL2ludml0YXRpb24iLCJAaWQiOiI2OTIxMmEzYS1kMDY4LTRmOWQtYTJkZC00NzQxYmNhODlhZjMiLCJsYWJlbCI6IkZhYmVyIENvbGxlZ2UiLCJnb2FsX2NvZGUiOiJpc3N1ZS12YyIsImdvYWwiOiJUbyBpc3N1ZSBhIEZhYmVyIENvbGxlZ2UgR3JhZHVhdGUgY3JlZGVudGlhbCIsImhhbmRzaGFrZV9wcm90b2NvbHMiOlsiaHR0cHM6Ly9kaWRjb21tLm9yZy9kaWRleGNoYW5nZS8xLjAiLCJodHRwczovL2RpZGNvbW0ub3JnL2Nvbm5lY3Rpb25zLzEuMCJdLCJzZXJ2aWNlcyI6WyJkaWQ6c292OkxqZ3BTVDJyanNveFllZ1FEUm03RUwiXX0K'
 
-      const invitation = await OutOfBandMessage.fromUrl(invitationUrl)
+      const invitation = await V1OutOfBandMessage.fromUrl(invitationUrl)
       const json = JsonTransformer.toJSON(invitation)
 
       expect(json).toEqual({
@@ -58,10 +58,10 @@ describe('OutOfBandMessage', () => {
         services: ['did:sov:LjgpST2rjsoxYegQDRm7EL'],
       }
 
-      const invitation = await OutOfBandMessage.fromJson(json)
+      const invitation = await V1OutOfBandMessage.fromJson(json)
 
       expect(invitation).toBeDefined()
-      expect(invitation).toBeInstanceOf(OutOfBandMessage)
+      expect(invitation).toBeInstanceOf(V1OutOfBandMessage)
     })
 
     test('throw validation error when services attribute is empty', async () => {
@@ -77,7 +77,7 @@ describe('OutOfBandMessage', () => {
 
       expect.assertions(1)
       try {
-        await OutOfBandMessage.fromJson(json)
+        await V1OutOfBandMessage.fromJson(json)
       } catch (error) {
         const [firstError] = error as [ValidationError]
         expect(firstError.constraints).toEqual({ arrayNotEmpty: 'services should not be empty' })

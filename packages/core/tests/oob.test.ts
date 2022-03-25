@@ -13,7 +13,7 @@ import { DidCommService } from '../src/modules/dids'
 import { OutOfBandRole } from '../src/modules/oob/domain/OutOfBandRole'
 import { OutOfBandState } from '../src/modules/oob/domain/OutOfBandState'
 import { convertToOldInvitation } from '../src/modules/oob/helpers'
-import { OutOfBandMessage } from '../src/modules/oob/messages'
+import { OutOfBandMessageBase } from '../src/modules/oob/messages'
 
 import { TestMessage } from './TestMessage'
 import { getBaseConfig, prepareForIssuance } from './helpers'
@@ -440,7 +440,7 @@ describe('out of band', () => {
     })
 
     test('throw an error when handshake protocols are not supported', async () => {
-      const outOfBandMessage = new OutOfBandMessage({ label: 'test-connection', services: [] })
+      const outOfBandMessage = new OutOfBandMessageBase({ label: 'test-connection', services: [] })
       const unsupportedProtocol = 'https://didcomm.org/unsupported-connections-protocol/1.0'
       outOfBandMessage.handshakeProtocols = [unsupportedProtocol as HandshakeProtocol]
 
@@ -452,7 +452,7 @@ describe('out of band', () => {
     })
 
     test('throw an error when the OOB message does not contain either handshake or requests', async () => {
-      const outOfBandMessage = new OutOfBandMessage({ label: 'test-connection', services: [] })
+      const outOfBandMessage = new OutOfBandMessageBase({ label: 'test-connection', services: [] })
 
       await expect(aliceAgent.oob.receiveInvitation(outOfBandMessage, receiveMessageConfig)).rejects.toEqual(
         new AriesFrameworkError(

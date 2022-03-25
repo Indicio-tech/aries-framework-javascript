@@ -2,7 +2,7 @@ import { AriesFrameworkError } from '../../error'
 import { ConnectionInvitationMessage, HandshakeProtocol } from '../connections'
 import { DidCommService } from '../dids'
 
-import { OutOfBandMessage } from './messages'
+import { V1OutOfBandMessage } from './messages'
 
 export function convertToNewInvitation(oldInvitation: ConnectionInvitationMessage) {
   const options = {
@@ -19,10 +19,10 @@ export function convertToNewInvitation(oldInvitation: ConnectionInvitationMessag
     ],
     handshakeProtocols: [HandshakeProtocol.Connections],
   }
-  return new OutOfBandMessage(options)
+  return new V1OutOfBandMessage(options)
 }
 
-export function convertToOldInvitation(newInvitation: OutOfBandMessage) {
+export function convertToOldInvitation(newInvitation: V1OutOfBandMessage) {
   if (newInvitation.services.length > 1) {
     throw new AriesFrameworkError(
       `Attribute 'services' MUST have exactly one entry. It contains ${newInvitation.services.length}.`

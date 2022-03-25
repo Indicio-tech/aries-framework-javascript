@@ -3,19 +3,19 @@ import type { DidCommService } from '../../dids'
 import type { OutOfBandRole } from '../domain/OutOfBandRole'
 import type { OutOfBandState } from '../domain/OutOfBandState'
 
-import { Type } from 'class-transformer'
+import { Transform } from 'class-transformer'
 
 import { AriesFrameworkError } from '../../../error'
 import { BaseRecord } from '../../../storage/BaseRecord'
 import { uuid } from '../../../utils/uuid'
-import { OutOfBandMessage } from '../messages'
+import { V1OutOfBandMessage, V1_1OutOfBandMessage } from '../messages'
 
 export interface OutOfBandRecordProps {
   id?: string
   createdAt?: Date
   updatedAt?: Date
   tags?: TagsBase
-  outOfBandMessage: OutOfBandMessage
+  outOfBandMessage: V1OutOfBandMessage | V1_1OutOfBandMessage
   role: OutOfBandRole
   state: OutOfBandState
   autoAcceptConnection?: boolean
@@ -23,8 +23,14 @@ export interface OutOfBandRecordProps {
 }
 
 export class OutOfBandRecord extends BaseRecord<TagsBase> {
-  @Type(() => OutOfBandMessage)
-  public outOfBandMessage!: OutOfBandMessage
+  @Transform(({value}) => {
+    if(value.type === V1OutOfBandMessage.type){
+      return new V1OutOfBandMessage(value)
+    }else{
+      return new V1_1OutOfBandMessage(value)
+    }
+  })
+  public outOfBandMessage!: V1OutOfBandMessage | V1_1OutOfBandMessage
   public role!: OutOfBandRole
   public state!: OutOfBandState
   public reusable!: boolean

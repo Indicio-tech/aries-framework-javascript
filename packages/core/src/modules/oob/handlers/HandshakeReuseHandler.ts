@@ -1,10 +1,10 @@
 import type { Handler } from '../../../agent/Handler'
 import type { Logger } from '../../../logger'
 
-import { HandshakeReuseMessage } from '../messages/HandshakeReuseMessage'
+import { V1HandshakeReuseMessage, V1_1HandshakeReuseMessage } from '../messages/HandshakeReuseMessage'
 
 export class HandshakeReuseHandler implements Handler {
-  public supportedMessages = [HandshakeReuseMessage]
+  public supportedMessages = [V1HandshakeReuseMessage, V1_1HandshakeReuseMessage]
   private logger: Logger
 
   public constructor(logger: Logger) {
@@ -12,6 +12,6 @@ export class HandshakeReuseHandler implements Handler {
   }
 
   public async handle() {
-    this.logger.error(`Out of band ${HandshakeReuseMessage.type} message not implemented yet.`)
+    this.logger.error(`Out of band ${V1HandshakeReuseMessage.type} message not implemented yet.`)
   }
 }

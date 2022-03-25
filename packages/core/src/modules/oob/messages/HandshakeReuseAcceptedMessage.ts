@@ -4,13 +4,13 @@ import { replaceLegacyDidSovPrefix } from '../../../utils/messageType'
 
 import { AgentMessage } from '../../../agent/AgentMessage'
 
-export interface HandshakeReuseMessageOptions {
+export interface HandshakeReuseAcceptedMessageOptions {
   id?: string
   parentThreadId?: string
 }
 
-export class V1_1HandshakeReuseMessage extends AgentMessage {
-  public constructor(options: HandshakeReuseMessageOptions) {
+export class V1_1HandshakeReuseAcceptedMessage extends AgentMessage {
+  public constructor(options: HandshakeReuseAcceptedMessageOptions) {
     super()
 
     if (options) {
@@ -22,16 +22,16 @@ export class V1_1HandshakeReuseMessage extends AgentMessage {
     }
   }
 
-  @Equals(V1_1HandshakeReuseMessage.type)
-  public readonly type = V1_1HandshakeReuseMessage.type
+  @Equals(V1_1HandshakeReuseAcceptedMessage.type)
+  public readonly type = V1_1HandshakeReuseAcceptedMessage.type
   @Transform(({ value }) => replaceLegacyDidSovPrefix(value), {
     toClassOnly: true,
   })
-  public static readonly type = 'https://didcomm.org/out-of-band/1.1/handshake-reuse'
+  public static readonly type = 'https://didcomm.org/out-of-band/1.1/handshake-reuse-accepted'
 }
 
-export class V1HandshakeReuseMessage extends AgentMessage {
-  public constructor(options: HandshakeReuseMessageOptions) {
+export class V1HandshakeReuseAcceptedMessage extends AgentMessage {
+  public constructor(options: HandshakeReuseAcceptedMessageOptions) {
     super()
 
     if (options) {
@@ -43,10 +43,10 @@ export class V1HandshakeReuseMessage extends AgentMessage {
     }
   }
 
-  @Equals(V1HandshakeReuseMessage.type)
-  public readonly type = V1HandshakeReuseMessage.type
+  @Equals(V1HandshakeReuseAcceptedMessage.type)
+  public readonly type = V1HandshakeReuseAcceptedMessage.type
   @Transform(({ value }) => replaceLegacyDidSovPrefix(value), {
     toClassOnly: true,
   })
-  public static readonly type = 'https://didcomm.org/out-of-band/1.0/handshake-reuse'
+  public static readonly type = 'https://didcomm.org/out-of-band/1.0/handshake-reuse-accepted'
 }

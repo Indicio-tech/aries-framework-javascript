@@ -14,7 +14,7 @@ export class HandshakeReuseAcceptedHandler implements Handler {
     this.outOfBandService = outOfBandService
   }
 
-  public async handle(inboundMessage: HandlerInboundMessage<V1HandshakeReuseAcceptedMessage>) {
-    await this.outOfBandService.processReuseAccepted()
+  public async handle(inboundMessage: HandlerInboundMessage<HandshakeReuseAcceptedHandler>) {
+    await this.outOfBandService.processReuseAccepted(inboundMessage)
   }
 }

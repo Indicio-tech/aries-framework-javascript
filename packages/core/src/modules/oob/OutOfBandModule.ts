@@ -208,16 +208,18 @@ export class OutOfBandModule {
    */
   public async parseInvitation(invitationUrl: string) {
     const parsedUrl = parseUrl(invitationUrl).query
-    if (parsedUrl['oob'] && typeof parsedUrl === 'string') {
+    //TODO: Change second check here for typing?
+    if (parsedUrl['oob'] && typeof parsedUrl['oob'] === 'string') {
       const invitationJson = JsonEncoder.fromBase64(parsedUrl['oob'])
 
       //Determine if v1 or v1.1
       let outOfBandMessage: V1OutOfBandMessage | V1_1OutOfBandMessage
-      if(replaceLegacyDidSovPrefix(invitationJson.type) === V1OutOfBandMessage.type){
-        outOfBandMessage = await V1OutOfBandMessage.fromJson(invitationJson)
-      }else{
-        outOfBandMessage = await V1_1OutOfBandMessage.fromJson(invitationJson)
-      }
+      outOfBandMessage = await V1OutOfBandMessage.fromJson(invitationJson)
+      // if(replaceLegacyDidSovPrefix(invitationJson.type) === V1OutOfBandMessage.type){
+      //   outOfBandMessage = await V1OutOfBandMessage.fromJson(invitationJson)
+      // }else{
+      //   outOfBandMessage = await V1_1OutOfBandMessage.fromJson(invitationJson)
+      // }
 
       return outOfBandMessage
     } else if (parsedUrl['c_i'] || parsedUrl['d_m']) {
@@ -427,8 +429,8 @@ export class OutOfBandModule {
     this.logger.debug('Searching for an existing connection for given services.', { services })
     for (const service of services) {
       if (typeof service === 'string') {
-        // TODO await this.connectionsModule.findByTheirDid()
-        throw new AriesFrameworkError('Dids are not currently supported in out-of-band message services attribute.')
+        return await this.connectionsModule.findByDid(service)
+        //throw new AriesFrameworkError('Dids are not currently supported in out-of-band message services attribute.')
       }
 
       for (const recipientKey of service.recipientKeys) {

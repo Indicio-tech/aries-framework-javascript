@@ -325,6 +325,9 @@ export class OutOfBandModule {
         if (!messages) {
           this.logger.debug('Out of band message does not contain any request messages.')
           await this.sendReuse(outOfBandMessage, connectionRecord)
+          this.logger.debug("Awaiting connection reuse to be accepted")
+          await this.outOfBandService.returnWhenAccepted(outOfBandMessage.id)
+          console.log("Connection reuse accepted")
         }
       } else {
         this.logger.debug('Reuse is disabled or connection does not exist.')

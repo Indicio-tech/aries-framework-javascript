@@ -1,8 +1,8 @@
 import { Transform } from 'class-transformer'
 import { Equals } from 'class-validator'
-import { replaceLegacyDidSovPrefix } from '../../../utils/messageType'
 
 import { AgentMessage } from '../../../agent/AgentMessage'
+import { replaceLegacyDidSovPrefix } from '../../../utils/messageType'
 
 export interface HandshakeReuseMessageOptions {
   id?: string

@@ -765,7 +765,7 @@ export class ConnectionService {
     invitation?: ConnectionInvitationMessage
     alias?: string
     routing: Routing
-    theirDid?: string,
+    theirDid?: string
     theirLabel?: string
     autoAcceptConnection?: boolean
     multiUseInvitation: boolean

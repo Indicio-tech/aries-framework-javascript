@@ -1,16 +1,22 @@
+import type { InboundMessageContext } from '../../agent/models/InboundMessageContext'
+import type { ReuseAcceptedEvent } from './OutOfBandEvents'
 import type { OutOfBandState } from './domain/OutOfBandState'
-import { OutOfBandRecord } from './repository'
-import { first, map, timeout } from 'rxjs/operators'
+import type {
+  V1HandshakeReuseAcceptedMessage,
+  V1_1HandshakeReuseAcceptedMessage,
+} from './messages/HandshakeReuseAcceptedMessage'
+import type { OutOfBandRecord } from './repository'
 
+import { firstValueFrom, ReplaySubject } from 'rxjs'
+import { first, map, timeout } from 'rxjs/operators'
 import { scoped, Lifecycle } from 'tsyringe'
 
-import { OutOfBandRepository } from './repository'
-import { InboundMessageContext } from '../../agent/models/InboundMessageContext'
-import { HandshakeReuseAcceptedHandler } from './handlers/HandshakeReuseAcceptedHandler'
-import { V1HandshakeReuseAcceptedMessage, V1_1HandshakeReuseAcceptedMessage } from './messages/HandshakeReuseAcceptedMessage'
+
 import { EventEmitter } from '../../agent/EventEmitter'
-import { OutOfBandEvents, ReuseAcceptedEvent } from './OutOfBandEvents'
-import { firstValueFrom, ReplaySubject } from 'rxjs'
+
+import { OutOfBandEvents } from './OutOfBandEvents'
+import { HandshakeReuseAcceptedHandler } from './handlers/HandshakeReuseAcceptedHandler'
+import { OutOfBandRepository } from './repository'
 
 @scoped(Lifecycle.ContainerScoped)
 export class OutOfBandService {
@@ -47,22 +53,22 @@ export class OutOfBandService {
     return this.outOfBandRepository.getAll()
   }
 
-  public async processReuseAccepted(messageContext: InboundMessageContext<V1_1HandshakeReuseAcceptedMessage | V1HandshakeReuseAcceptedMessage>) {
-    console.log("Connection reuse accepted!", messageContext.message)
+  public async processReuseAccepted(
+    messageContext: InboundMessageContext<V1_1HandshakeReuseAcceptedMessage | V1HandshakeReuseAcceptedMessage>
+  ) {
+    console.log('Connection reuse accepted!', messageContext.message)
     const record = await this.findByMessageId(messageContext.message.threadId)
-    if(record){
+    if (record) {
       this.eventEmitter.emit<ReuseAcceptedEvent>({
         type: OutOfBandEvents.ReuseAccepted,
         payload: {
-          outOfBandRecord: record
-        }
+          outOfBandRecord: record,
+        },
       })
-    }else{
-      console.error("Failed to find matching record for connection reuse")
+    } else {
+      console.error('Failed to find matching record for connection reuse')
     }
-    
   }
-  
 
   public async returnWhenAccepted(outOfBandId: string, timeoutMs = 20000): Promise<OutOfBandRecord> {
     //Ensure that the outOfBandId matches the record given from the event
@@ -70,9 +76,7 @@ export class OutOfBandService {
       return outOfBandRecord.id === outOfBandId
     }
 
-    const observable = this.eventEmitter.observable<ReuseAcceptedEvent>(
-      OutOfBandEvents.ReuseAccepted
-    )
+    const observable = this.eventEmitter.observable<ReuseAcceptedEvent>(OutOfBandEvents.ReuseAccepted)
     const subject = new ReplaySubject<OutOfBandRecord>(1)
 
     observable
@@ -82,8 +86,7 @@ export class OutOfBandService {
         timeout(timeoutMs)
       )
       .subscribe(subject)
-      
+
     return firstValueFrom(subject)
   }
-
 }

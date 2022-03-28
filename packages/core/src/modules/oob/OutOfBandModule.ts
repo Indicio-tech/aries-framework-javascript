@@ -3,6 +3,7 @@ import type { AgentMessageReceivedEvent } from '../../agent/Events'
 import type { Logger } from '../../logger'
 import type { ConnectionRecord, Routing, HandshakeProtocol } from '../../modules/connections'
 import type { PlaintextMessage } from '../../types'
+import type { V1_1OutOfBandMessage } from './messages'
 
 import { parseUrl } from 'query-string'
 import { EmptyError } from 'rxjs'
@@ -15,6 +16,8 @@ import { AgentEventTypes } from '../../agent/Events'
 import { MessageSender } from '../../agent/MessageSender'
 import { createOutboundMessage } from '../../agent/helpers'
 import { AriesFrameworkError } from '../../error'
+import { JsonEncoder } from '../../utils'
+import { replaceLegacyDidSovPrefix } from '../../utils/messageType'
 import { ConnectionInvitationMessage, ConnectionState, ConnectionsModule } from '../connections'
 import { DidCommService, DidsModule } from '../dids'
 
@@ -22,12 +25,10 @@ import { OutOfBandService } from './OutOfBandService'
 import { OutOfBandRole } from './domain/OutOfBandRole'
 import { OutOfBandState } from './domain/OutOfBandState'
 import { HandshakeReuseHandler } from './handlers'
-import { convertToNewInvitation } from './helpers'
-import { V1HandshakeReuseMessage, V1_1OutOfBandMessage, V1OutOfBandMessage, V1_1HandshakeReuseMessage } from './messages'
-import { OutOfBandRecord } from './repository/OutOfBandRecord'
-import { JsonEncoder } from '../../utils'
-import { replaceLegacyDidSovPrefix } from '../../utils/messageType'
 import { HandshakeReuseAcceptedHandler } from './handlers/HandshakeReuseAcceptedHandler'
+import { convertToNewInvitation } from './helpers'
+import { V1HandshakeReuseMessage, V1OutOfBandMessage, V1_1HandshakeReuseMessage } from './messages'
+import { OutOfBandRecord } from './repository/OutOfBandRecord'
 
 const didCommProfiles = ['didcomm/aip1', 'didcomm/aip2;env=rfc19']
 
@@ -327,9 +328,9 @@ export class OutOfBandModule {
         if (!messages) {
           this.logger.debug('Out of band message does not contain any request messages.')
           await this.sendReuse(outOfBandMessage, connectionRecord)
-          this.logger.debug("Awaiting connection reuse to be accepted")
+          this.logger.debug('Awaiting connection reuse to be accepted')
           await this.outOfBandService.returnWhenAccepted(outOfBandMessage.id)
-          console.log("Connection reuse accepted")
+          console.log('Connection reuse accepted')
         }
       } else {
         this.logger.debug('Reuse is disabled or connection does not exist.')
@@ -529,12 +530,12 @@ export class OutOfBandModule {
 
   private async sendReuse(outOfBandMessage: V1OutOfBandMessage | V1_1OutOfBandMessage, connection: ConnectionRecord) {
     let message
-    if(outOfBandMessage.type === V1OutOfBandMessage.type){
+    if (outOfBandMessage.type === V1OutOfBandMessage.type) {
       message = new V1HandshakeReuseMessage({ parentThreadId: outOfBandMessage.id })
-    }else{
+    } else {
       message = new V1_1HandshakeReuseMessage({ parentThreadId: outOfBandMessage.id })
     }
-    
+
     const outbound = createOutboundMessage(connection, message)
     await this.messageSender.sendMessage(outbound)
   }

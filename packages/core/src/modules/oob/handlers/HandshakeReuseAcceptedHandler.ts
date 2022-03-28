@@ -1,8 +1,11 @@
 import type { Handler, HandlerInboundMessage } from '../../../agent/Handler'
 import type { Logger } from '../../../logger'
+import type { OutOfBandService } from '../OutOfBandService'
 
-import { V1HandshakeReuseAcceptedMessage, V1_1HandshakeReuseAcceptedMessage } from '../messages/HandshakeReuseAcceptedMessage'
-import { OutOfBandService } from '../OutOfBandService'
+import {
+  V1HandshakeReuseAcceptedMessage,
+  V1_1HandshakeReuseAcceptedMessage,
+} from '../messages/HandshakeReuseAcceptedMessage'
 
 export class HandshakeReuseAcceptedHandler implements Handler {
   private outOfBandService: OutOfBandService

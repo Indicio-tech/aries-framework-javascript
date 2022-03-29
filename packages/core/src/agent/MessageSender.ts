@@ -56,26 +56,45 @@ export class MessageSender {
     this.outboundTransports.push(outboundTransport)
   }
 
-  private resolveKeys(keys: string[]): Array<string> {
+  private async resolveKeys(keys: string[]): Promise<Array<string>> {
+    let resolvedKeys = []
+
     // Resolve dids to retrieve keys for encryption
-    return keys.map((key) => {
+    for(const key of keys) {
       if (key.startsWith('did:')){
         const didMethod = parseDid(key).method
 
         // TODO: Resolve keys for other methods than did:key
         if(didMethod === 'key'){
           const publicKeyBase58 = DidKey.fromDid(key).key.publicKeyBase58
-          console.log("Recipient Key PublicKeyBase58", publicKeyBase58)
-          return publicKeyBase58
+          
+          resolvedKeys.push(publicKeyBase58)
         } 
         else{
-          throw new AriesFrameworkError(`Unsupported did method '${didMethod}' for encrypting message, supported did methods: ['did:key']`)
+          const {
+            didDocument,
+            didResolutionMetadata: { error, message },
+          } = await this.didResolverService.resolve(key)
+    
+          if (!didDocument) {
+            throw new AriesFrameworkError(
+              `Unable to resolve did document for did '${key}': ${error} ${message}`
+            )
+          }
+    
+          if(!didDocument.verificationMethod[0].publicKeyBase58){
+            throw new AriesFrameworkError(`Unable to resolve encryption keys for did '${key}'`)
+          }
+
+          resolvedKeys.push(didDocument.verificationMethod[0].publicKeyBase58)
         }
       }
       else {
-        return key
+        resolvedKeys.push(key)
       }
-    })
+    }
+
+    return resolvedKeys
   }
 
   public async packMessage({
@@ -89,8 +108,8 @@ export class MessageSender {
   }): Promise<OutboundPackage> {
     const encryptedMessage = await this.envelopeService.packMessage(message, {
       senderKey: keys.senderKey,
-      recipientKeys: this.resolveKeys(keys.recipientKeys),
-      routingKeys: this.resolveKeys(keys.routingKeys)
+      recipientKeys: await this.resolveKeys(keys.recipientKeys),
+      routingKeys: await this.resolveKeys(keys.routingKeys)
     })
 
     return {

@@ -18,6 +18,7 @@ export interface ConnectionRecordProps {
   theirDid?: string
   theirDidDoc?: DidDoc
   theirLabel?: string
+  invitationDid?: string
   invitation?: ConnectionInvitationMessage
   state?: ConnectionState | DidExchangeState
   role?: ConnectionRole | DidExchangeRole
@@ -63,6 +64,7 @@ export class ConnectionRecord
   public theirDidDoc?: DidDoc
   public theirDid?: string
   public theirLabel?: string
+  public invitationDid?: string
 
   @Type(() => ConnectionInvitationMessage)
   public invitation?: ConnectionInvitationMessage
@@ -92,6 +94,7 @@ export class ConnectionRecord
       this.theirDid = props.theirDid
       this.theirDidDoc = props.theirDidDoc
       this.theirLabel = props.theirLabel
+      this.invitationDid = props.invitationDid
       this.state = props.state
       this.role = props.role
       this.alias = props.alias
@@ -122,6 +125,7 @@ export class ConnectionRecord
       mediatorId: this.mediatorId,
       did: this.did,
       theirDid: this.theirDid,
+      invitationDid: this.invitationDid,
       outOfBandId: this.outOfBandId,
     }
   }

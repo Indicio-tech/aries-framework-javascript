@@ -11,15 +11,20 @@ import { V1HandshakeReuseAcceptedMessage, V1_1HandshakeReuseAcceptedMessage } fr
 import { EventEmitter } from '../../agent/EventEmitter'
 import { OutOfBandEvents, ReuseAcceptedEvent } from './OutOfBandEvents'
 import { firstValueFrom, ReplaySubject } from 'rxjs'
+import { AriesFrameworkError } from '../../error'
+import type { Logger } from '../../logger'
+import { AgentConfig } from '../../agent/AgentConfig'
 
 @scoped(Lifecycle.ContainerScoped)
 export class OutOfBandService {
   private outOfBandRepository: OutOfBandRepository
   private eventEmitter: EventEmitter
+  private logger: Logger
 
-  public constructor(outOfBandRepository: OutOfBandRepository, eventEmitter: EventEmitter) {
+  public constructor(outOfBandRepository: OutOfBandRepository, eventEmitter: EventEmitter, config: AgentConfig) {
     this.outOfBandRepository = outOfBandRepository
     this.eventEmitter = eventEmitter
+    this.logger = config.logger
   }
 
   public async save(outOfBandRecord: OutOfBandRecord) {
@@ -48,26 +53,40 @@ export class OutOfBandService {
   }
 
   public async processReuseAccepted(messageContext: InboundMessageContext<V1_1HandshakeReuseAcceptedMessage | V1HandshakeReuseAcceptedMessage>) {
-    console.log("Connection reuse accepted!", messageContext.message)
-    const record = await this.findByMessageId(messageContext.message.threadId)
-    if(record){
-      this.eventEmitter.emit<ReuseAcceptedEvent>({
-        type: OutOfBandEvents.ReuseAccepted,
-        payload: {
-          outOfBandRecord: record
-        }
-      })
-    }else{
-      console.error("Failed to find matching record for connection reuse")
+    try{
+      this.logger.debug("Connection reuse accepted!", { message: messageContext.message})
+      const parentThreadId = messageContext.message.parentThreadId
+      if(!parentThreadId){
+        throw new AriesFrameworkError(`No Parent Thread Id specified in connection reuse accepted message`)
+      }
+      const record = await this.findByMessageId(parentThreadId)
+      if(record){
+        this.eventEmitter.emit<ReuseAcceptedEvent>({
+          type: OutOfBandEvents.ReuseAccepted,
+          payload: {
+            outOfBandRecord: record
+          }
+        })
+      }else{
+        throw new AriesFrameworkError(`Failed to find matching record for connection reuse with parent thread id '${parentThreadId}'`)
+      }
     }
-    
+    catch (error) {
+      this.logger.warn(
+        `Unable to process connection reuse accepted message`,
+        {
+          message: messageContext.message,
+          error: error,
+        }
+      )
+    }
   }
   
 
-  public async returnWhenAccepted(outOfBandId: string, timeoutMs = 20000): Promise<OutOfBandRecord> {
+  public async returnWhenAccepted(outOfBandRecordId: string, timeoutMs = 20000): Promise<OutOfBandRecord> {
     //Ensure that the outOfBandId matches the record given from the event
     const isAccepted = (outOfBandRecord: OutOfBandRecord) => {
-      return outOfBandRecord.id === outOfBandId
+      return outOfBandRecord.id === outOfBandRecordId
     }
 
     const observable = this.eventEmitter.observable<ReuseAcceptedEvent>(

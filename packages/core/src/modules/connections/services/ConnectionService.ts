@@ -20,7 +20,7 @@ import { AriesFrameworkError } from '../../../error'
 import { JsonTransformer } from '../../../utils/JsonTransformer'
 import { MessageValidator } from '../../../utils/MessageValidator'
 import { Wallet } from '../../../wallet/Wallet'
-import { DidCommService, DidKey, DidResolverService, IndyAgentService } from '../../dids'
+import { DidCommService, DidDocumentBuilder, DidKey, DidResolverService, IndyAgentService, Key } from '../../dids'
 import { ConnectionEventTypes } from '../ConnectionEvents'
 import { ConnectionProblemReportError, ConnectionProblemReportReason } from '../errors'
 import {
@@ -42,6 +42,12 @@ import {
 import { ConnectionRecord } from '../repository/ConnectionRecord'
 import { ConnectionRepository } from '../repository/ConnectionRepository'
 import { parseDid } from '../../dids/domain/parse'
+import { uuid } from '../../../utils/uuid'
+import { KeyType } from '../../../crypto'
+import { convertPublicKeyToX25519 } from '@stablelib/ed25519'
+import { getEd25519VerificationMethod } from '../../dids/domain/key-type/ed25519'
+import { getX25519VerificationMethod } from '../../dids/domain/key-type/x25519'
+import { PeerDidNumAlgo, DidPeer } from '../../dids/methods/peer/DidPeer'
 
 export interface ConnectionRequestParams {
   label?: string
@@ -76,6 +82,61 @@ export class ConnectionService {
     this.didResolverService = didResolverService
   }
 
+  //TODO: Abstract into different service
+  private async createPeerDidDoc(services: DidCommService[]) {
+    const didDocumentBuilder = new DidDocumentBuilder('')
+
+    // We need to all reciepient and routing keys from all services but we don't want to duplicated items
+    const recipientKeys = new Set(services.map((s) => s.recipientKeys).reduce((acc, curr) => acc.concat(curr), []))
+    const routingKeys = new Set(
+      services
+        .map((s) => s.routingKeys)
+        .filter((r): r is string[] => r !== undefined)
+        .reduce((acc, curr) => acc.concat(curr), [])
+    )
+
+    for (const recipientKey of recipientKeys) {
+      const publicKeyBase58 = recipientKey
+      const ed25519Key = Key.fromPublicKeyBase58(publicKeyBase58, KeyType.Ed25519)
+      const x25519Key = Key.fromPublicKey(convertPublicKeyToX25519(ed25519Key.publicKey), KeyType.X25519)
+
+      const ed25519VerificationMethod = getEd25519VerificationMethod({
+        id: uuid(),
+        key: ed25519Key,
+        controller: '#id',
+      })
+      const x25519VerificationMethod = getX25519VerificationMethod({
+        id: uuid(),
+        key: x25519Key,
+        controller: '#id',
+      })
+
+      // We should not add duplicated keys for services
+      didDocumentBuilder.addAuthentication(ed25519VerificationMethod).addKeyAgreement(x25519VerificationMethod)
+    }
+
+    for (const routingKey of routingKeys) {
+      const publicKeyBase58 = routingKey
+      const ed25519Key = Key.fromPublicKeyBase58(publicKeyBase58, KeyType.Ed25519)
+      const verificationMethod = getEd25519VerificationMethod({
+        id: uuid(),
+        key: ed25519Key,
+        controller: '#id',
+      })
+      didDocumentBuilder.addVerificationMethod(verificationMethod)
+    }
+
+    services.forEach((service) => {
+      didDocumentBuilder.addService(service)
+    })
+
+    const didDocument = didDocumentBuilder.build()
+
+    const peerDid = DidPeer.fromDidDocument(didDocument, PeerDidNumAlgo.MultipleInceptionKeyWithoutDoc)
+
+    return { peerDid, didDocument }
+  }
+
   public async protocolCreateRequest(
     outOfBandRecord: OutOfBandRecord,
     config: ConnectionRequestParams
@@ -86,6 +147,15 @@ export class ConnectionService {
 
     const { outOfBandMessage } = outOfBandRecord
 
+    let invitationDid: string
+    // If Out of Band invitation service is a service block, encode into a peerDid NumAlgo 2
+    if(outOfBandMessage.services[0] instanceof DidCommService){
+      invitationDid = (await this.createPeerDidDoc([outOfBandMessage.services[0]])).peerDid.did
+    }
+    else{
+      invitationDid = outOfBandMessage.services[0]
+    }
+
     const connectionRecord = await this.createConnection({
       protocol: HandshakeProtocol.Connections,
       role: ConnectionRole.Invitee,
@@ -95,6 +165,7 @@ export class ConnectionService {
       routing: config.routing,
       autoAcceptConnection: config?.autoAcceptConnection,
       multiUseInvitation: false,
+      invitationDid,
     })
     connectionRecord.outOfBandId = outOfBandRecord.id
 
@@ -221,11 +292,22 @@ export class ConnectionService {
       protocol?: HandshakeProtocol
     }
   ): Promise<ConnectionRecord> {
+    let invitationDid: string
+    
+    if(!invitation.service?.serviceEndpoint){
+      throw new AriesFrameworkError(`Error while processing invitation--no service endpoint provided`)
+    }
+    let invitationService: DidCommService = new DidCommService({id: invitation.id, serviceEndpoint: invitation.service?.serviceEndpoint, recipientKeys: invitation.service?.recipientKeys, routingKeys: invitation.service?.routingKeys})
+    // If Out of Band invitation service is a service block, encode into a peerDid NumAlgo 2
+    invitationDid = (await this.createPeerDidDoc([invitationService])).peerDid.did
+  
+
     const connectionRecord = await this.createConnection({
       role: ConnectionRole.Invitee,
       state: ConnectionState.Invited,
       alias: config.alias,
       theirLabel: invitation.label,
+      invitationDid,
       autoAcceptConnection: config.autoAcceptConnection,
       routing: config.routing,
       invitation,
@@ -428,7 +510,7 @@ export class ConnectionService {
     if (!recipientVerkey || !senderVerkey) {
       throw new AriesFrameworkError('Unable to process connection request without senderVerkey or recipientVerkey')
     }
-
+    console.log("PROCESSING RESPONSE", recipientVerkey)
     const connectionRecord = await this.findByVerkey(recipientVerkey)
 
     if (!connectionRecord) {
@@ -462,10 +544,7 @@ export class ConnectionService {
     if (outOfBandRecord) {
       const outOfBandMessageService = outOfBandRecord.outOfBandMessage.services[0]
 
-      if(outOfBandMessageService instanceof DidCommService) {
-        invitationKey = outOfBandMessageService.recipientKeys[0]
-      }
-      else{
+      if(typeof outOfBandMessageService === "string") {
         if (outOfBandMessageService.startsWith('did:')){
           const didMethod = parseDid(outOfBandMessageService).method
   
@@ -498,6 +577,9 @@ export class ConnectionService {
             `Unable to resolve recipient keys for invitation service '${outOfBandMessageService}'`
           )
         }
+      }
+      else{
+        invitationKey = outOfBandMessageService.recipientKeys[0]
       }
 
     } else {
@@ -786,6 +868,10 @@ export class ConnectionService {
     return this.connectionRepository.findByInvitationKey(key)
   }
 
+  public findByInvitationDid(did: string): Promise<ConnectionRecord | null> {
+    return this.connectionRepository.findSingleByQuery({ invitationDid: did })
+  }
+
   /**
    * Retrieve a connection record by thread id
    *
@@ -814,6 +900,7 @@ export class ConnectionService {
     routing: Routing
     theirDid?: string,
     theirLabel?: string
+    invitationDid?: string,
     autoAcceptConnection?: boolean
     multiUseInvitation: boolean
     tags?: CustomConnectionTags
@@ -864,6 +951,7 @@ export class ConnectionService {
       alias: options.alias,
       theirLabel: options.theirLabel,
       theirDid: options.theirDid,
+      invitationDid: options.invitationDid,
       autoAcceptConnection: options.autoAcceptConnection,
       imageUrl: options.imageUrl,
       multiUseInvitation: options.multiUseInvitation,

@@ -16,7 +16,7 @@ import { MessageSender } from '../../agent/MessageSender'
 import { createOutboundMessage } from '../../agent/helpers'
 import { AriesFrameworkError } from '../../error'
 import { ConnectionInvitationMessage, ConnectionState, ConnectionsModule } from '../connections'
-import { DidCommService, DidsModule } from '../dids'
+import { DidCommService, DidDocumentBuilder, DidsModule, Key } from '../dids'
 
 import { OutOfBandService } from './OutOfBandService'
 import { OutOfBandRole } from './domain/OutOfBandRole'
@@ -28,6 +28,16 @@ import { OutOfBandRecord } from './repository/OutOfBandRecord'
 import { JsonEncoder } from '../../utils'
 import { replaceLegacyDidSovPrefix } from '../../utils/messageType'
 import { HandshakeReuseAcceptedHandler } from './handlers/HandshakeReuseAcceptedHandler'
+
+import { convertPublicKeyToX25519 } from '@stablelib/ed25519'
+import { getKeyDidMappingByVerificationMethod } from '../dids/domain/key-type'
+import { getEd25519VerificationMethod } from '../dids/domain/key-type/ed25519'
+import { getX25519VerificationMethod } from '../dids/domain/key-type/x25519'
+import { DidKey } from '../dids/methods/key/DidKey'
+import { DidPeer, PeerDidNumAlgo } from '../dids/methods/peer/DidPeer'
+import { DidRecord, DidRepository } from '../dids/repository'
+import { KeyType } from '../../crypto'
+import { uuid } from '../../utils/uuid'
 
 const didCommProfiles = ['didcomm/aip1', 'didcomm/aip2;env=rfc19']
 
@@ -327,6 +337,7 @@ export class OutOfBandModule {
         if (!messages) {
           this.logger.debug('Out of band message does not contain any request messages.')
           await this.sendReuse(outOfBandMessage, connectionRecord)
+          await this.outOfBandService.returnWhenAccepted(outOfBandRecord.id, 10000)
         }
       } else {
         this.logger.debug('Reuse is disabled or connection does not exist.')
@@ -422,28 +433,89 @@ export class OutOfBandModule {
     return handshakeProtocol
   }
 
+  //TODO: Abstract into different service
+  private async createPeerDidDoc(services: DidCommService[]) {
+    const didDocumentBuilder = new DidDocumentBuilder('')
+
+    // We need to all reciepient and routing keys from all services but we don't want to duplicated items
+    const recipientKeys = new Set(services.map((s) => s.recipientKeys).reduce((acc, curr) => acc.concat(curr), []))
+    const routingKeys = new Set(
+      services
+        .map((s) => s.routingKeys)
+        .filter((r): r is string[] => r !== undefined)
+        .reduce((acc, curr) => acc.concat(curr), [])
+    )
+
+    for (const recipientKey of recipientKeys) {
+      const publicKeyBase58 = recipientKey
+      const ed25519Key = Key.fromPublicKeyBase58(publicKeyBase58, KeyType.Ed25519)
+      const x25519Key = Key.fromPublicKey(convertPublicKeyToX25519(ed25519Key.publicKey), KeyType.X25519)
+
+      const ed25519VerificationMethod = getEd25519VerificationMethod({
+        id: uuid(),
+        key: ed25519Key,
+        controller: '#id',
+      })
+      const x25519VerificationMethod = getX25519VerificationMethod({
+        id: uuid(),
+        key: x25519Key,
+        controller: '#id',
+      })
+
+      // We should not add duplicated keys for services
+      didDocumentBuilder.addAuthentication(ed25519VerificationMethod).addKeyAgreement(x25519VerificationMethod)
+    }
+
+    for (const routingKey of routingKeys) {
+      const publicKeyBase58 = routingKey
+      const ed25519Key = Key.fromPublicKeyBase58(publicKeyBase58, KeyType.Ed25519)
+      const verificationMethod = getEd25519VerificationMethod({
+        id: uuid(),
+        key: ed25519Key,
+        controller: '#id',
+      })
+      didDocumentBuilder.addVerificationMethod(verificationMethod)
+    }
+
+    services.forEach((service) => {
+      didDocumentBuilder.addService(service)
+    })
+
+    const didDocument = didDocumentBuilder.build()
+
+    const peerDid = DidPeer.fromDidDocument(didDocument, PeerDidNumAlgo.MultipleInceptionKeyWithoutDoc)
+
+    return { peerDid, didDocument }
+  }
+
   private async findExistingConnection(services: Array<DidCommService | string>) {
     this.logger.debug('Searching for an existing connection for given services.', { services })
     for (const service of services) {
+      let newInvitationDid: string
+
       if (typeof service === 'string') {
-        return await this.connectionsModule.findByDid(service)
-        //throw new AriesFrameworkError('Dids are not currently supported in out-of-band message services attribute.')
+        newInvitationDid = service
+      }
+      else {
+        newInvitationDid = (await this.createPeerDidDoc([service])).peerDid.did
       }
 
-      for (const recipientKey of service.recipientKeys) {
-        let existingConnection = await this.connectionsModule.findByTheirKey(recipientKey)
+      return await this.connectionsModule.findByInvitationDid(newInvitationDid)
 
-        if (!existingConnection) {
-          // TODO Encode the key and endpoint of the service block in a Peer DID numalgo 2 and using that DID instead of a service block
-          const theirDidRecord = await this.dids.findByVerkey(recipientKey)
+      // for (const recipientKey of service.recipientKeys) {
+      //   let existingConnection = await this.connectionsModule.findByTheirKey(recipientKey)
 
-          if (theirDidRecord) {
-            existingConnection = await this.connectionsModule.findByDid(theirDidRecord.id)
-          }
-        }
+      //   if (!existingConnection) {
+      //     // TODO Encode the key and endpoint of the service block in a Peer DID numalgo 2 and using that DID instead of a service block
+      //     const theirDidRecord = await this.dids.findByVerkey(recipientKey)
 
-        return existingConnection
-      }
+      //     if (theirDidRecord) {
+      //       existingConnection = await this.connectionsModule.findByDid(theirDidRecord.id)
+      //     }
+      //   }
+
+      //   return existingConnection
+      // }
     }
   }
 

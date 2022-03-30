@@ -236,6 +236,10 @@ export class ConnectionsModule {
     return this.connectionService.findByInvitationKey(key)
   }
 
+  public findByInvitationDid(did: string): Promise<ConnectionRecord | null> {
+    return this.connectionService.findByInvitationDid(did)
+  }
+
   public async findByOutOfBandId(outOfBandId: string) {
     return this.connectionService.findByOutOfBandId(outOfBandId)
   }

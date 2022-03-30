@@ -64,7 +64,6 @@ export class MessageSender {
       if (key.startsWith('did:')){
         const didMethod = parseDid(key).method
 
-        // TODO: Resolve keys for other methods than did:key
         if(didMethod === 'key'){
           const publicKeyBase58 = DidKey.fromDid(key).key.publicKeyBase58
           

@@ -12,6 +12,7 @@ export interface ConnectionRequestMessageOptions {
   did: string
   didDoc?: DidDoc
   imageUrl?: string
+  parentThreadId?: string
 }
 
 /**
@@ -36,6 +37,8 @@ export class ConnectionRequestMessage extends AgentMessage {
         did: options.did,
         didDoc: options.didDoc,
       })
+
+      this.setThread({ threadId: this.id, parentThreadId: options.parentThreadId })
     }
   }
 

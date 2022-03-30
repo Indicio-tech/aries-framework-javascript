@@ -20,7 +20,7 @@ import { AriesFrameworkError } from '../../../error'
 import { JsonTransformer } from '../../../utils/JsonTransformer'
 import { MessageValidator } from '../../../utils/MessageValidator'
 import { Wallet } from '../../../wallet/Wallet'
-import { IndyAgentService } from '../../dids'
+import { DidCommService, DidKey, DidResolverService, IndyAgentService } from '../../dids'
 import { ConnectionEventTypes } from '../ConnectionEvents'
 import { ConnectionProblemReportError, ConnectionProblemReportReason } from '../errors'
 import {
@@ -41,6 +41,7 @@ import {
 } from '../models'
 import { ConnectionRecord } from '../repository/ConnectionRecord'
 import { ConnectionRepository } from '../repository/ConnectionRepository'
+import { parseDid } from '../../dids/domain/parse'
 
 export interface ConnectionRequestParams {
   label?: string
@@ -58,18 +59,21 @@ export class ConnectionService {
   private connectionRepository: ConnectionRepository
   private eventEmitter: EventEmitter
   private logger: Logger
+  private didResolverService: DidResolverService
 
   public constructor(
     @inject(InjectionSymbols.Wallet) wallet: Wallet,
     config: AgentConfig,
     connectionRepository: ConnectionRepository,
-    eventEmitter: EventEmitter
+    eventEmitter: EventEmitter,
+    didResolverService: DidResolverService
   ) {
     this.wallet = wallet
     this.config = config
     this.connectionRepository = connectionRepository
     this.eventEmitter = eventEmitter
     this.logger = config.logger
+    this.didResolverService = didResolverService
   }
 
   public async protocolCreateRequest(
@@ -101,6 +105,7 @@ export class ConnectionService {
       did: connectionRecord.did,
       didDoc: connectionRecord.didDoc,
       imageUrl: myImageUrl ?? this.config.connectionImageUrl,
+      parentThreadId: outOfBandRecord.id
     })
 
     if (autoAcceptConnection !== undefined || autoAcceptConnection !== null) {
@@ -389,6 +394,7 @@ export class ConnectionService {
     const connectionResponse = new ConnectionResponseMessage({
       threadId: connectionRecord.threadId,
       connectionSig: await signData(connectionJson, this.wallet, signingKey),
+      parentThreadId: outOfBandRecord?.id
     })
 
     await this.updateState(connectionRecord, ConnectionState.Responded)
@@ -454,10 +460,51 @@ export class ConnectionService {
 
     let invitationKey
     if (outOfBandRecord) {
-      invitationKey = outOfBandRecord.getTags().recipientKey
+      const outOfBandMessageService = outOfBandRecord.outOfBandMessage.services[0]
+
+      if(outOfBandMessageService instanceof DidCommService) {
+        invitationKey = outOfBandMessageService.recipientKeys[0]
+      }
+      else{
+        if (outOfBandMessageService.startsWith('did:')){
+          const didMethod = parseDid(outOfBandMessageService).method
+  
+          if(didMethod === 'key'){
+            const publicKeyBase58 = DidKey.fromDid(outOfBandMessageService).key.publicKeyBase58
+            
+            invitationKey = publicKeyBase58
+          } 
+          else{
+            const {
+              didDocument,
+              didResolutionMetadata: { error, message },
+            } = await this.didResolverService.resolve(outOfBandMessageService)
+      
+            if (!didDocument) {
+              throw new AriesFrameworkError(
+                `Unable to resolve did document for did '${outOfBandMessageService}': ${error} ${message}`
+              )
+            }
+      
+            if(!didDocument.verificationMethod[0].publicKeyBase58){
+              throw new AriesFrameworkError(`Unable to resolve encryption keys for did '${outOfBandMessageService}'`)
+            }
+  
+            invitationKey = didDocument.verificationMethod[0].publicKeyBase58
+          }
+        }
+        else{
+          throw new AriesFrameworkError(
+            `Unable to resolve recipient keys for invitation service '${outOfBandMessageService}'`
+          )
+        }
+      }
+
     } else {
       invitationKey = connectionRecord.getTags().invitationKey
     }
+
+    
 
     if (signerVerkey !== invitationKey) {
       throw new ConnectionProblemReportError(

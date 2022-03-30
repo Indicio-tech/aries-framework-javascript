@@ -23,7 +23,12 @@ import { OutOfBandRole } from './domain/OutOfBandRole'
 import { OutOfBandState } from './domain/OutOfBandState'
 import { HandshakeReuseHandler } from './handlers'
 import { convertToNewInvitation } from './helpers'
-import { V1HandshakeReuseMessage, V1_1OutOfBandMessage, V1OutOfBandMessage, V1_1HandshakeReuseMessage } from './messages'
+import {
+  V1HandshakeReuseMessage,
+  V1_1OutOfBandMessage,
+  V1OutOfBandMessage,
+  V1_1HandshakeReuseMessage,
+} from './messages'
 import { OutOfBandRecord } from './repository/OutOfBandRecord'
 import { JsonEncoder } from '../../utils'
 import { replaceLegacyDidSovPrefix } from '../../utils/messageType'
@@ -63,6 +68,7 @@ export interface ReceiveOutOfBandMessageConfig {
   autoAcceptConnection?: boolean
   reuseConnection?: boolean
   routing?: Routing
+  connectOnTimeout?: boolean
 }
 
 @scoped(Lifecycle.ContainerScoped)
@@ -275,6 +281,7 @@ export class OutOfBandModule {
     const label = config.label ?? this.agentConfig.label
     const alias = config.alias
     const imageUrl = config.imageUrl ?? this.agentConfig.connectionImageUrl
+    const connectOnTimeout = config.connectOnTimeout ?? true
 
     const messages = outOfBandMessage.getRequests()
 
@@ -300,6 +307,7 @@ export class OutOfBandModule {
         autoAcceptConnection,
         reuseConnection,
         routing,
+        connectOnTimeout,
       })
     }
 
@@ -316,10 +324,11 @@ export class OutOfBandModule {
       imageUrl?: string
       mediatorId?: string
       routing?: Routing
+      connectOnTimeout?: boolean
     }
   ) {
     const { outOfBandMessage } = outOfBandRecord
-    const { label, alias, imageUrl, autoAcceptConnection, reuseConnection, routing } = config
+    const { label, alias, imageUrl, autoAcceptConnection, reuseConnection, routing, connectOnTimeout } = config
     const { handshakeProtocols, services } = outOfBandMessage
     const messages = outOfBandMessage.getRequests()
 
@@ -335,9 +344,24 @@ export class OutOfBandModule {
         this.logger.debug(`Reuse is enabled. Reusing an existing connection with ID ${existingConnection.id}.`)
         connectionRecord = existingConnection
         if (!messages) {
-          this.logger.debug('Out of band message does not contain any request messages.')
-          await this.sendReuse(outOfBandMessage, connectionRecord)
-          await this.outOfBandService.returnWhenAccepted(outOfBandRecord.id, 10000)
+          try {
+            this.logger.debug('Out of band message does not contain any request messages.')
+            await this.sendReuse(outOfBandMessage, connectionRecord)
+            await this.outOfBandService.returnWhenAccepted(outOfBandRecord.id, 10000)
+          } catch (error) {
+            if (connectOnTimeout) {
+              this.logger.warn('Connection reuse was not accepted, creating new connection', { error })
+              connectionRecord = await this.createConnection(outOfBandRecord, {
+                label,
+                alias,
+                imageUrl,
+                autoAcceptConnection,
+                routing,
+              })
+            } else {
+              throw error
+            }
+          }
         }
       } else {
         this.logger.debug('Reuse is disabled or connection does not exist.')
@@ -495,8 +519,7 @@ export class OutOfBandModule {
 
       if (typeof service === 'string') {
         newInvitationDid = service
-      }
-      else {
+      } else {
         newInvitationDid = (await this.createPeerDidDoc([service])).peerDid.did
       }
 
@@ -598,12 +621,12 @@ export class OutOfBandModule {
 
   private async sendReuse(outOfBandMessage: V1OutOfBandMessage | V1_1OutOfBandMessage, connection: ConnectionRecord) {
     let message
-    if(outOfBandMessage.type === V1OutOfBandMessage.type){
+    if (outOfBandMessage.type === V1OutOfBandMessage.type) {
       message = new V1HandshakeReuseMessage({ parentThreadId: outOfBandMessage.id })
-    }else{
+    } else {
       message = new V1_1HandshakeReuseMessage({ parentThreadId: outOfBandMessage.id })
     }
-    
+
     const outbound = createOutboundMessage(connection, message)
     await this.messageSender.sendMessage(outbound)
   }

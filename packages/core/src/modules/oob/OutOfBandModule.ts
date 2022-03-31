@@ -3,7 +3,9 @@ import type { AgentMessageReceivedEvent } from '../../agent/Events'
 import type { Logger } from '../../logger'
 import type { ConnectionRecord, Routing, HandshakeProtocol } from '../../modules/connections'
 import type { PlaintextMessage } from '../../types'
+import type { V1_1OutOfBandMessage } from './messages'
 
+import { convertPublicKeyToX25519 } from '@stablelib/ed25519'
 import { parseUrl } from 'query-string'
 import { EmptyError } from 'rxjs'
 import { Lifecycle, scoped } from 'tsyringe'
@@ -14,35 +16,28 @@ import { EventEmitter } from '../../agent/EventEmitter'
 import { AgentEventTypes } from '../../agent/Events'
 import { MessageSender } from '../../agent/MessageSender'
 import { createOutboundMessage } from '../../agent/helpers'
+import { KeyType } from '../../crypto'
 import { AriesFrameworkError } from '../../error'
-import { ConnectionInvitationMessage, ConnectionState, ConnectionsModule, DidExchangeState } from '../connections'
-import { DidCommService, DidDocumentBuilder, DidsModule, Key } from '../dids'
-
-import { OutOfBandService } from './OutOfBandService'
-import { OutOfBandRole } from './domain/OutOfBandRole'
-import { OutOfBandState } from './domain/OutOfBandState'
-import { HandshakeReuseHandler } from './handlers'
-import { convertToNewInvitation } from './helpers'
-import {
-  V1HandshakeReuseMessage,
-  V1_1OutOfBandMessage,
-  V1OutOfBandMessage,
-  V1_1HandshakeReuseMessage,
-} from './messages'
-import { OutOfBandRecord } from './repository/OutOfBandRecord'
 import { JsonEncoder } from '../../utils'
 import { replaceLegacyDidSovPrefix } from '../../utils/messageType'
-import { HandshakeReuseAcceptedHandler } from './handlers/HandshakeReuseAcceptedHandler'
-
-import { convertPublicKeyToX25519 } from '@stablelib/ed25519'
+import { uuid } from '../../utils/uuid'
+import { ConnectionInvitationMessage, ConnectionState, ConnectionsModule, DidExchangeState } from '../connections'
+import { DidCommService, DidDocumentBuilder, DidsModule, Key } from '../dids'
 import { getKeyDidMappingByVerificationMethod } from '../dids/domain/key-type'
 import { getEd25519VerificationMethod } from '../dids/domain/key-type/ed25519'
 import { getX25519VerificationMethod } from '../dids/domain/key-type/x25519'
 import { DidKey } from '../dids/methods/key/DidKey'
 import { DidPeer, PeerDidNumAlgo } from '../dids/methods/peer/DidPeer'
 import { DidRecord, DidRepository } from '../dids/repository'
-import { KeyType } from '../../crypto'
-import { uuid } from '../../utils/uuid'
+
+import { OutOfBandService } from './OutOfBandService'
+import { OutOfBandRole } from './domain/OutOfBandRole'
+import { OutOfBandState } from './domain/OutOfBandState'
+import { HandshakeReuseHandler } from './handlers'
+import { HandshakeReuseAcceptedHandler } from './handlers/HandshakeReuseAcceptedHandler'
+import { convertToNewInvitation } from './helpers'
+import { V1HandshakeReuseMessage, V1OutOfBandMessage, V1_1HandshakeReuseMessage } from './messages'
+import { OutOfBandRecord } from './repository/OutOfBandRecord'
 
 const didCommProfiles = ['didcomm/aip1', 'didcomm/aip2;env=rfc19']
 
@@ -229,8 +224,9 @@ export class OutOfBandModule {
       const invitationJson = JsonEncoder.fromBase64(parsedUrl['oob'])
 
       //Determine if v1 or v1.1
-      let outOfBandMessage: V1OutOfBandMessage | V1_1OutOfBandMessage
-      outOfBandMessage = await V1OutOfBandMessage.fromJson(invitationJson)
+      const outOfBandMessage: V1OutOfBandMessage | V1_1OutOfBandMessage = await V1OutOfBandMessage.fromJson(
+        invitationJson
+      )
       // if(replaceLegacyDidSovPrefix(invitationJson.type) === V1OutOfBandMessage.type){
       //   outOfBandMessage = await V1OutOfBandMessage.fromJson(invitationJson)
       // }else{
@@ -512,7 +508,9 @@ export class OutOfBandModule {
     return { peerDid, didDocument }
   }
 
-  private async findExistingConnection(services: Array<DidCommService | string>): Promise<ConnectionRecord | undefined> {
+  private async findExistingConnection(
+    services: Array<DidCommService | string>
+  ): Promise<ConnectionRecord | undefined> {
     this.logger.debug('Searching for an existing connection for given services.', { services })
     for (const service of services) {
       let newInvitationDid: string
@@ -525,13 +523,13 @@ export class OutOfBandModule {
 
       const connectionRecords = await this.connectionsModule.findByInvitationDid(newInvitationDid)
       // Return undefined if there is not at least one record returned
-      if(!connectionRecords?.[0]){
+      if (!connectionRecords?.[0]) {
         return
       }
 
-      // Return the first connection that matches that is active 
-      for(const connectionRecord of connectionRecords){
-        if(connectionRecord.state === (ConnectionState.Complete || DidExchangeState.Completed)){
+      // Return the first connection that matches that is active
+      for (const connectionRecord of connectionRecords) {
+        if (connectionRecord.state === (ConnectionState.Complete || DidExchangeState.Completed)) {
           return connectionRecord
         }
       }

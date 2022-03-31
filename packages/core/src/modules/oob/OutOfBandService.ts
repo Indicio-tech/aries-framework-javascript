@@ -1,19 +1,24 @@
+import type { InboundMessageContext } from '../../agent/models/InboundMessageContext'
+import type { Logger } from '../../logger'
+import type { ReuseAcceptedEvent } from './OutOfBandEvents'
 import type { OutOfBandState } from './domain/OutOfBandState'
-import { OutOfBandRecord } from './repository'
-import { first, map, timeout } from 'rxjs/operators'
+import type {
+  V1HandshakeReuseAcceptedMessage,
+  V1_1HandshakeReuseAcceptedMessage,
+} from './messages/HandshakeReuseAcceptedMessage'
+import type { OutOfBandRecord } from './repository'
 
+import { firstValueFrom, ReplaySubject } from 'rxjs'
+import { first, map, timeout } from 'rxjs/operators'
 import { scoped, Lifecycle } from 'tsyringe'
 
-import { OutOfBandRepository } from './repository'
-import { InboundMessageContext } from '../../agent/models/InboundMessageContext'
-import { HandshakeReuseAcceptedHandler } from './handlers/HandshakeReuseAcceptedHandler'
-import { V1HandshakeReuseAcceptedMessage, V1_1HandshakeReuseAcceptedMessage } from './messages/HandshakeReuseAcceptedMessage'
-import { EventEmitter } from '../../agent/EventEmitter'
-import { OutOfBandEvents, ReuseAcceptedEvent } from './OutOfBandEvents'
-import { firstValueFrom, ReplaySubject } from 'rxjs'
-import { AriesFrameworkError } from '../../error'
-import type { Logger } from '../../logger'
 import { AgentConfig } from '../../agent/AgentConfig'
+import { EventEmitter } from '../../agent/EventEmitter'
+import { AriesFrameworkError } from '../../error'
+
+import { OutOfBandEvents } from './OutOfBandEvents'
+import { HandshakeReuseAcceptedHandler } from './handlers/HandshakeReuseAcceptedHandler'
+import { OutOfBandRepository } from './repository'
 
 @scoped(Lifecycle.ContainerScoped)
 export class OutOfBandService {
@@ -52,36 +57,35 @@ export class OutOfBandService {
     return this.outOfBandRepository.getAll()
   }
 
-  public async processReuseAccepted(messageContext: InboundMessageContext<V1_1HandshakeReuseAcceptedMessage | V1HandshakeReuseAcceptedMessage>) {
-    try{
-      this.logger.debug("Connection reuse accepted!", { message: messageContext.message})
+  public async processReuseAccepted(
+    messageContext: InboundMessageContext<V1_1HandshakeReuseAcceptedMessage | V1HandshakeReuseAcceptedMessage>
+  ) {
+    try {
+      this.logger.debug('Connection reuse accepted!', { message: messageContext.message })
       const parentThreadId = messageContext.message.parentThreadId
-      if(!parentThreadId){
+      if (!parentThreadId) {
         throw new AriesFrameworkError(`No Parent Thread Id specified in connection reuse accepted message`)
       }
       const record = await this.findByMessageId(parentThreadId)
-      if(record){
+      if (record) {
         this.eventEmitter.emit<ReuseAcceptedEvent>({
           type: OutOfBandEvents.ReuseAccepted,
           payload: {
-            outOfBandRecord: record
-          }
+            outOfBandRecord: record,
+          },
         })
-      }else{
-        throw new AriesFrameworkError(`Failed to find matching record for connection reuse with parent thread id '${parentThreadId}'`)
+      } else {
+        throw new AriesFrameworkError(
+          `Failed to find matching record for connection reuse with parent thread id '${parentThreadId}'`
+        )
       }
-    }
-    catch (error) {
-      this.logger.warn(
-        `Unable to process connection reuse accepted message`,
-        {
-          message: messageContext.message,
-          error: error,
-        }
-      )
+    } catch (error) {
+      this.logger.warn(`Unable to process connection reuse accepted message`, {
+        message: messageContext.message,
+        error: error,
+      })
     }
   }
-  
 
   public async returnWhenAccepted(outOfBandRecordId: string, timeoutMs = 20000): Promise<OutOfBandRecord> {
     //Ensure that the outOfBandId matches the record given from the event
@@ -89,9 +93,7 @@ export class OutOfBandService {
       return outOfBandRecord.id === outOfBandRecordId
     }
 
-    const observable = this.eventEmitter.observable<ReuseAcceptedEvent>(
-      OutOfBandEvents.ReuseAccepted
-    )
+    const observable = this.eventEmitter.observable<ReuseAcceptedEvent>(OutOfBandEvents.ReuseAccepted)
     const subject = new ReplaySubject<OutOfBandRecord>(1)
 
     observable
@@ -101,8 +103,7 @@ export class OutOfBandService {
         timeout(timeoutMs)
       )
       .subscribe(subject)
-      
+
     return firstValueFrom(subject)
   }
-
 }

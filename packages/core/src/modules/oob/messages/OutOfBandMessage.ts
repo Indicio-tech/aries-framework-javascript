@@ -12,7 +12,6 @@ import { AriesFrameworkError } from '../../../error'
 import { JsonEncoder } from '../../../utils/JsonEncoder'
 import { JsonTransformer } from '../../../utils/JsonTransformer'
 import { MessageValidator } from '../../../utils/MessageValidator'
-
 import { replaceLegacyDidSovPrefix } from '../../../utils/messageType'
 
 interface OutOfBandMessageOptions {
@@ -75,7 +74,7 @@ export class OutOfBandMessageBase extends AgentMessage {
 
   @Expose({ name: 'handshake_protocols' })
   @Transform(({ value }) => value.map(replaceLegacyDidSovPrefix), {
-    toClassOnly: true
+    toClassOnly: true,
   })
   public handshakeProtocols?: HandshakeProtocol[]
 
@@ -132,7 +131,7 @@ export class V1OutOfBandMessage extends OutOfBandMessageBase {
   }
 }
 
-export class V1_1OutOfBandMessage extends OutOfBandMessageBase{
+export class V1_1OutOfBandMessage extends OutOfBandMessageBase {
   @Equals(V1_1OutOfBandMessage.type)
   @Transform(({ value }) => replaceLegacyDidSovPrefix(value), {
     toClassOnly: true,

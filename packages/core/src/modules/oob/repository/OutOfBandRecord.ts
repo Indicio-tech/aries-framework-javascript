@@ -23,10 +23,10 @@ export interface OutOfBandRecordProps {
 }
 
 export class OutOfBandRecord extends BaseRecord<TagsBase> {
-  @Transform(({value}) => {
-    if(value.type === V1OutOfBandMessage.type){
+  @Transform(({ value }) => {
+    if (value.type === V1OutOfBandMessage.type) {
       return new V1OutOfBandMessage(value)
-    }else{
+    } else {
       return new V1_1OutOfBandMessage(value)
     }
   })

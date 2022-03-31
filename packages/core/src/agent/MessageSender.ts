@@ -1,5 +1,5 @@
 import type { ConnectionRecord } from '../modules/connections'
-import type { IndyAgentService } from '../modules/dids/domain/service'
+import type { IndyAgentService, DidCommService } from '../modules/dids/domain/service'
 import type { OutOfBandRecord } from '../modules/oob/repository'
 import type { OutboundTransport } from '../transport/OutboundTransport'
 import type { OutboundMessage, OutboundPackage, EncryptedMessage } from '../types'
@@ -13,15 +13,14 @@ import { DID_COMM_TRANSPORT_QUEUE, InjectionSymbols } from '../constants'
 import { ReturnRouteTypes } from '../decorators/transport/TransportDecorator'
 import { AriesFrameworkError } from '../error'
 import { Logger } from '../logger'
-import { DidCommService } from '../modules/dids/domain/service'
+import { DidKey } from '../modules/dids'
+import { parseDid } from '../modules/dids/domain/parse'
 import { DidResolverService } from '../modules/dids/services/DidResolverService'
 import { MessageRepository } from '../storage/MessageRepository'
 import { MessageValidator } from '../utils/MessageValidator'
 
 import { EnvelopeService } from './EnvelopeService'
 import { TransportService } from './TransportService'
-import { parseDid } from '../modules/dids/domain/parse'
-import { DidKey } from '../modules/dids'
 
 export interface TransportPriorityOptions {
   schemes: string[]
@@ -57,38 +56,34 @@ export class MessageSender {
   }
 
   private async resolveKeys(keys: string[]): Promise<Array<string>> {
-    let resolvedKeys = []
+    const resolvedKeys = []
 
     // Resolve dids to retrieve keys for encryption
-    for(const key of keys) {
-      if (key.startsWith('did:')){
+    for (const key of keys) {
+      if (key.startsWith('did:')) {
         const didMethod = parseDid(key).method
 
-        if(didMethod === 'key'){
+        if (didMethod === 'key') {
           const publicKeyBase58 = DidKey.fromDid(key).key.publicKeyBase58
-          
+
           resolvedKeys.push(publicKeyBase58)
-        } 
-        else{
+        } else {
           const {
             didDocument,
             didResolutionMetadata: { error, message },
           } = await this.didResolverService.resolve(key)
-    
+
           if (!didDocument) {
-            throw new AriesFrameworkError(
-              `Unable to resolve did document for did '${key}': ${error} ${message}`
-            )
+            throw new AriesFrameworkError(`Unable to resolve did document for did '${key}': ${error} ${message}`)
           }
-    
-          if(!didDocument.verificationMethod[0].publicKeyBase58){
+
+          if (!didDocument.verificationMethod[0].publicKeyBase58) {
             throw new AriesFrameworkError(`Unable to resolve encryption keys for did '${key}'`)
           }
 
           resolvedKeys.push(didDocument.verificationMethod[0].publicKeyBase58)
         }
-      }
-      else {
+      } else {
         resolvedKeys.push(key)
       }
     }
@@ -108,7 +103,7 @@ export class MessageSender {
     const encryptedMessage = await this.envelopeService.packMessage(message, {
       senderKey: keys.senderKey,
       recipientKeys: await this.resolveKeys(keys.recipientKeys),
-      routingKeys: await this.resolveKeys(keys.routingKeys)
+      routingKeys: await this.resolveKeys(keys.routingKeys),
     })
 
     return {
@@ -153,7 +148,10 @@ export class MessageSender {
     }
 
     // Retrieve DIDComm services
-    const { services, queueService } = await this.retrieveServicesByConnection({connection, transportPriority: options?.transportPriority})
+    const { services, queueService } = await this.retrieveServicesByConnection({
+      connection,
+      transportPriority: options?.transportPriority,
+    })
 
     if (this.outboundTransports.length === 0 && !queueService) {
       throw new AriesFrameworkError('Agent has no outbound transport!')
@@ -233,7 +231,11 @@ export class MessageSender {
     }
 
     // Retrieve DIDComm services
-    const { services, queueService } = await this.retrieveServicesByConnection({connection, transportPriority: options?.transportPriority, outOfBandRecord: outOfBand})
+    const { services, queueService } = await this.retrieveServicesByConnection({
+      connection,
+      transportPriority: options?.transportPriority,
+      outOfBandRecord: outOfBand,
+    })
 
     // Loop trough all available services and try to send the message
     for await (const service of services) {
@@ -333,7 +335,7 @@ export class MessageSender {
     const outboundPackage = await this.packMessage({ message, keys, endpoint: service.serviceEndpoint })
     outboundPackage.endpoint = service.serviceEndpoint
     outboundPackage.connectionId = connectionId
-    if (!service.protocolScheme){
+    if (!service.protocolScheme) {
       throw new AriesFrameworkError('Unable to identify service protocol scheme for outbound transport')
     }
     for (const transport of this.outboundTransports) {
@@ -347,13 +349,12 @@ export class MessageSender {
   private async retrieveServicesByConnection({
     connection,
     transportPriority,
-    outOfBandRecord
+    outOfBandRecord,
   }: {
-    connection: ConnectionRecord,
-    transportPriority?: TransportPriorityOptions,
+    connection: ConnectionRecord
+    transportPriority?: TransportPriorityOptions
     outOfBandRecord?: OutOfBandRecord
-  }
-  ) {
+  }) {
     this.logger.debug(`Retrieving services for connection '${connection.id}' (${connection.theirLabel})`, {
       transportPriority,
       connection,

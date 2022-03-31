@@ -8,6 +8,7 @@ import type { ConnectionProblemReportMessage } from '../messages'
 import type { DidExchangeRole } from '../models'
 import type { CustomConnectionTags } from '../repository/ConnectionRecord'
 
+import { convertPublicKeyToX25519 } from '@stablelib/ed25519'
 import { firstValueFrom, ReplaySubject } from 'rxjs'
 import { first, map, timeout } from 'rxjs/operators'
 import { inject, scoped, Lifecycle } from 'tsyringe'
@@ -15,12 +16,18 @@ import { inject, scoped, Lifecycle } from 'tsyringe'
 import { AgentConfig } from '../../../agent/AgentConfig'
 import { EventEmitter } from '../../../agent/EventEmitter'
 import { InjectionSymbols } from '../../../constants'
+import { KeyType } from '../../../crypto'
 import { signData, unpackAndVerifySignatureDecorator } from '../../../decorators/signature/SignatureDecoratorUtils'
 import { AriesFrameworkError } from '../../../error'
 import { JsonTransformer } from '../../../utils/JsonTransformer'
 import { MessageValidator } from '../../../utils/MessageValidator'
+import { uuid } from '../../../utils/uuid'
 import { Wallet } from '../../../wallet/Wallet'
 import { DidCommService, DidDocumentBuilder, DidKey, DidResolverService, IndyAgentService, Key } from '../../dids'
+import { getEd25519VerificationMethod } from '../../dids/domain/key-type/ed25519'
+import { getX25519VerificationMethod } from '../../dids/domain/key-type/x25519'
+import { parseDid } from '../../dids/domain/parse'
+import { PeerDidNumAlgo, DidPeer } from '../../dids/methods/peer/DidPeer'
 import { ConnectionEventTypes } from '../ConnectionEvents'
 import { ConnectionProblemReportError, ConnectionProblemReportReason } from '../errors'
 import {
@@ -41,13 +48,6 @@ import {
 } from '../models'
 import { ConnectionRecord } from '../repository/ConnectionRecord'
 import { ConnectionRepository } from '../repository/ConnectionRepository'
-import { parseDid } from '../../dids/domain/parse'
-import { uuid } from '../../../utils/uuid'
-import { KeyType } from '../../../crypto'
-import { convertPublicKeyToX25519 } from '@stablelib/ed25519'
-import { getEd25519VerificationMethod } from '../../dids/domain/key-type/ed25519'
-import { getX25519VerificationMethod } from '../../dids/domain/key-type/x25519'
-import { PeerDidNumAlgo, DidPeer } from '../../dids/methods/peer/DidPeer'
 
 export interface ConnectionRequestParams {
   label?: string
@@ -149,10 +149,9 @@ export class ConnectionService {
 
     let invitationDid: string
     // If Out of Band invitation service is a service block, encode into a peerDid NumAlgo 2
-    if(outOfBandMessage.services[0] instanceof DidCommService){
+    if (outOfBandMessage.services[0] instanceof DidCommService) {
       invitationDid = (await this.createPeerDidDoc([outOfBandMessage.services[0]])).peerDid.did
-    }
-    else{
+    } else {
       invitationDid = outOfBandMessage.services[0]
     }
 
@@ -176,7 +175,7 @@ export class ConnectionService {
       did: connectionRecord.did,
       didDoc: connectionRecord.didDoc,
       imageUrl: myImageUrl ?? this.config.connectionImageUrl,
-      parentThreadId: outOfBandRecord.id
+      parentThreadId: outOfBandRecord.id,
     })
 
     if (autoAcceptConnection !== undefined || autoAcceptConnection !== null) {
@@ -292,15 +291,17 @@ export class ConnectionService {
       protocol?: HandshakeProtocol
     }
   ): Promise<ConnectionRecord> {
-    let invitationDid: string
-    
-    if(!invitation.service?.serviceEndpoint){
+    if (!invitation.service?.serviceEndpoint) {
       throw new AriesFrameworkError(`Error while processing invitation--no service endpoint provided`)
     }
-    let invitationService: DidCommService = new DidCommService({id: invitation.id, serviceEndpoint: invitation.service?.serviceEndpoint, recipientKeys: invitation.service?.recipientKeys, routingKeys: invitation.service?.routingKeys})
+    const invitationService: DidCommService = new DidCommService({
+      id: invitation.id,
+      serviceEndpoint: invitation.service?.serviceEndpoint,
+      recipientKeys: invitation.service?.recipientKeys,
+      routingKeys: invitation.service?.routingKeys,
+    })
     // If Out of Band invitation service is a service block, encode into a peerDid NumAlgo 2
-    invitationDid = (await this.createPeerDidDoc([invitationService])).peerDid.did
-  
+    const invitationDid = (await this.createPeerDidDoc([invitationService])).peerDid.did
 
     const connectionRecord = await this.createConnection({
       role: ConnectionRole.Invitee,
@@ -476,7 +477,7 @@ export class ConnectionService {
     const connectionResponse = new ConnectionResponseMessage({
       threadId: connectionRecord.threadId,
       connectionSig: await signData(connectionJson, this.wallet, signingKey),
-      parentThreadId: outOfBandRecord?.id
+      parentThreadId: outOfBandRecord?.id,
     })
 
     await this.updateState(connectionRecord, ConnectionState.Responded)
@@ -510,7 +511,6 @@ export class ConnectionService {
     if (!recipientVerkey || !senderVerkey) {
       throw new AriesFrameworkError('Unable to process connection request without senderVerkey or recipientVerkey')
     }
-    console.log("PROCESSING RESPONSE", recipientVerkey)
     const connectionRecord = await this.findByVerkey(recipientVerkey)
 
     if (!connectionRecord) {
@@ -544,49 +544,43 @@ export class ConnectionService {
     if (outOfBandRecord) {
       const outOfBandMessageService = outOfBandRecord.outOfBandMessage.services[0]
 
-      if(typeof outOfBandMessageService === "string") {
-        if (outOfBandMessageService.startsWith('did:')){
+      if (typeof outOfBandMessageService === 'string') {
+        if (outOfBandMessageService.startsWith('did:')) {
           const didMethod = parseDid(outOfBandMessageService).method
-  
-          if(didMethod === 'key'){
+
+          if (didMethod === 'key') {
             const publicKeyBase58 = DidKey.fromDid(outOfBandMessageService).key.publicKeyBase58
-            
+
             invitationKey = publicKeyBase58
-          } 
-          else{
+          } else {
             const {
               didDocument,
               didResolutionMetadata: { error, message },
             } = await this.didResolverService.resolve(outOfBandMessageService)
-      
+
             if (!didDocument) {
               throw new AriesFrameworkError(
                 `Unable to resolve did document for did '${outOfBandMessageService}': ${error} ${message}`
               )
             }
-      
-            if(!didDocument.verificationMethod[0].publicKeyBase58){
+
+            if (!didDocument.verificationMethod[0].publicKeyBase58) {
               throw new AriesFrameworkError(`Unable to resolve encryption keys for did '${outOfBandMessageService}'`)
             }
-  
+
             invitationKey = didDocument.verificationMethod[0].publicKeyBase58
           }
-        }
-        else{
+        } else {
           throw new AriesFrameworkError(
             `Unable to resolve recipient keys for invitation service '${outOfBandMessageService}'`
           )
         }
-      }
-      else{
+      } else {
         invitationKey = outOfBandMessageService.recipientKeys[0]
       }
-
     } else {
       invitationKey = connectionRecord.getTags().invitationKey
     }
-
-    
 
     if (signerVerkey !== invitationKey) {
       throw new ConnectionProblemReportError(
@@ -898,9 +892,9 @@ export class ConnectionService {
     invitation?: ConnectionInvitationMessage
     alias?: string
     routing: Routing
-    theirDid?: string,
+    theirDid?: string
     theirLabel?: string
-    invitationDid?: string,
+    invitationDid?: string
     autoAcceptConnection?: boolean
     multiUseInvitation: boolean
     tags?: CustomConnectionTags

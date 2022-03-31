@@ -868,8 +868,8 @@ export class ConnectionService {
     return this.connectionRepository.findByInvitationKey(key)
   }
 
-  public findByInvitationDid(did: string): Promise<ConnectionRecord | null> {
-    return this.connectionRepository.findSingleByQuery({ invitationDid: did })
+  public findByInvitationDid(did: string): Promise<ConnectionRecord[] | null> {
+    return this.connectionRepository.findByQuery({ invitationDid: did })
   }
 
   /**

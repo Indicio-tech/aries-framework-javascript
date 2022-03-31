@@ -15,7 +15,7 @@ import { AgentEventTypes } from '../../agent/Events'
 import { MessageSender } from '../../agent/MessageSender'
 import { createOutboundMessage } from '../../agent/helpers'
 import { AriesFrameworkError } from '../../error'
-import { ConnectionInvitationMessage, ConnectionState, ConnectionsModule } from '../connections'
+import { ConnectionInvitationMessage, ConnectionState, ConnectionsModule, DidExchangeState } from '../connections'
 import { DidCommService, DidDocumentBuilder, DidsModule, Key } from '../dids'
 
 import { OutOfBandService } from './OutOfBandService'
@@ -512,7 +512,7 @@ export class OutOfBandModule {
     return { peerDid, didDocument }
   }
 
-  private async findExistingConnection(services: Array<DidCommService | string>) {
+  private async findExistingConnection(services: Array<DidCommService | string>): Promise<ConnectionRecord | undefined> {
     this.logger.debug('Searching for an existing connection for given services.', { services })
     for (const service of services) {
       let newInvitationDid: string
@@ -523,22 +523,18 @@ export class OutOfBandModule {
         newInvitationDid = (await this.createPeerDidDoc([service])).peerDid.did
       }
 
-      return await this.connectionsModule.findByInvitationDid(newInvitationDid)
+      const connectionRecords = await this.connectionsModule.findByInvitationDid(newInvitationDid)
+      // Return undefined if there is not at least one record returned
+      if(!connectionRecords?.[0]){
+        return
+      }
 
-      // for (const recipientKey of service.recipientKeys) {
-      //   let existingConnection = await this.connectionsModule.findByTheirKey(recipientKey)
-
-      //   if (!existingConnection) {
-      //     // TODO Encode the key and endpoint of the service block in a Peer DID numalgo 2 and using that DID instead of a service block
-      //     const theirDidRecord = await this.dids.findByVerkey(recipientKey)
-
-      //     if (theirDidRecord) {
-      //       existingConnection = await this.connectionsModule.findByDid(theirDidRecord.id)
-      //     }
-      //   }
-
-      //   return existingConnection
-      // }
+      // Return the first connection that matches that is active 
+      for(const connectionRecord of connectionRecords){
+        if(connectionRecord.state === (ConnectionState.Complete || DidExchangeState.Completed)){
+          return connectionRecord
+        }
+      }
     }
   }
 

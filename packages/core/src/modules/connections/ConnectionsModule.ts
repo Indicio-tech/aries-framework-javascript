@@ -236,7 +236,7 @@ export class ConnectionsModule {
     return this.connectionService.findByInvitationKey(key)
   }
 
-  public findByInvitationDid(did: string): Promise<ConnectionRecord | null> {
+  public findByInvitationDid(did: string): Promise<ConnectionRecord[] | null> {
     return this.connectionService.findByInvitationDid(did)
   }
 

@@ -10,6 +10,7 @@ export interface TrustPingMessageOptions {
   id?: string
   responseRequested?: boolean
   timing?: Pick<TimingDecorator, 'outTime' | 'expiresTime' | 'delayMilli'>
+  parentThreadId?: string
 }
 
 /**
@@ -38,6 +39,8 @@ export class TrustPingMessage extends AgentMessage {
           delayMilli: options.timing.delayMilli,
         })
       }
+
+      this.setThread({ threadId: this.id, parentThreadId: options.parentThreadId })
     }
   }
 

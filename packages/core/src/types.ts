@@ -4,12 +4,28 @@ import type { ConnectionRecord } from './modules/connections'
 import type { AutoAcceptCredential } from './modules/credentials/CredentialAutoAcceptType'
 import type { DidCommService } from './modules/dids/domain/service/DidCommService'
 import type { IndyPoolConfig } from './modules/ledger/IndyPool'
+import type { OutOfBandRecord } from './modules/oob/repository'
 import type { AutoAcceptProof } from './modules/proofs'
 import type { MediatorPickupStrategy } from './modules/routing'
+
+export const enum KeyDerivationMethod {
+  /** default value in indy-sdk. Will be used when no value is provided */
+  Argon2IMod = 'ARGON2I_MOD',
+  /** less secure, but faster */
+  Argon2IInt = 'ARGON2I_INT',
+  /** raw wallet master key */
+  Raw = 'RAW',
+}
 
 export interface WalletConfig {
   id: string
   key: string
+  keyDerivationMethod?: KeyDerivationMethod
+}
+
+export interface WalletExportImportConfig {
+  key: string
+  path: string
 }
 
 export type EncryptedMessage = {
@@ -65,6 +81,7 @@ export interface DecryptedMessageContext {
 export interface OutboundMessage<T extends AgentMessage = AgentMessage> {
   payload: T
   connection: ConnectionRecord
+  outOfBand?: OutOfBandRecord
 }
 
 export interface OutboundServiceMessage<T extends AgentMessage = AgentMessage> {

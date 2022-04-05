@@ -8,6 +8,7 @@ export interface TrustPingResponseMessageOptions {
   comment?: string
   id?: string
   threadId: string
+  parentThreadId?: string
   timing?: Pick<TimingDecorator, 'inTime' | 'outTime'>
 }
 
@@ -39,6 +40,8 @@ export class TrustPingResponseMessage extends AgentMessage {
           outTime: options.timing.outTime,
         })
       }
+
+      this.setThread({ threadId: options.threadId, parentThreadId: options.parentThreadId })
     }
   }
 

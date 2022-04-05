@@ -1,5 +1,5 @@
 import type { TagsBase } from '../../../storage/BaseRecord'
-import type { ConnectionRole } from '../models/ConnectionRole'
+import type { ConnectionRole, DidExchangeRole, HandshakeProtocol } from '../models'
 
 import { Type } from 'class-transformer'
 
@@ -7,8 +7,7 @@ import { AriesFrameworkError } from '../../../error'
 import { BaseRecord } from '../../../storage/BaseRecord'
 import { uuid } from '../../../utils/uuid'
 import { ConnectionInvitationMessage } from '../messages/ConnectionInvitationMessage'
-import { ConnectionState } from '../models/ConnectionState'
-import { DidDoc } from '../models/did/DidDoc'
+import { DidDoc, ConnectionState, DidExchangeState } from '../models'
 
 export interface ConnectionRecordProps {
   id?: string
@@ -19,23 +18,26 @@ export interface ConnectionRecordProps {
   theirDid?: string
   theirDidDoc?: DidDoc
   theirLabel?: string
+  invitationDid?: string
   invitation?: ConnectionInvitationMessage
-  state: ConnectionState
-  role: ConnectionRole
+  state?: ConnectionState | DidExchangeState
+  role?: ConnectionRole | DidExchangeRole
   alias?: string
   autoAcceptConnection?: boolean
   threadId?: string
   tags?: CustomConnectionTags
   imageUrl?: string
-  multiUseInvitation: boolean
+  multiUseInvitation?: boolean
   mediatorId?: string
   errorMessage?: string
+  protocol?: HandshakeProtocol
+  outOfBandId?: string
 }
 
 export type CustomConnectionTags = TagsBase
 export type DefaultConnectionTags = {
-  state: ConnectionState
-  role: ConnectionRole
+  state?: ConnectionState | DidExchangeState
+  role?: ConnectionRole | DidExchangeRole
   invitationKey?: string
   threadId?: string
   verkey?: string
@@ -43,14 +45,15 @@ export type DefaultConnectionTags = {
   mediatorId?: string
   did: string
   theirDid?: string
+  outOfBandId?: string
 }
 
 export class ConnectionRecord
   extends BaseRecord<DefaultConnectionTags, CustomConnectionTags>
   implements ConnectionRecordProps
 {
-  public state!: ConnectionState
-  public role!: ConnectionRole
+  public state?: ConnectionState | DidExchangeState
+  public role?: ConnectionRole | DidExchangeRole
 
   @Type(() => DidDoc)
   public didDoc!: DidDoc
@@ -61,6 +64,7 @@ export class ConnectionRecord
   public theirDidDoc?: DidDoc
   public theirDid?: string
   public theirLabel?: string
+  public invitationDid?: string
 
   @Type(() => ConnectionInvitationMessage)
   public invitation?: ConnectionInvitationMessage
@@ -72,6 +76,8 @@ export class ConnectionRecord
   public threadId?: string
   public mediatorId?: string
   public errorMessage?: string
+  public protocol?: HandshakeProtocol
+  public outOfBandId?: string
 
   public static readonly type = 'ConnectionRecord'
   public readonly type = ConnectionRecord.type
@@ -88,6 +94,7 @@ export class ConnectionRecord
       this.theirDid = props.theirDid
       this.theirDidDoc = props.theirDidDoc
       this.theirLabel = props.theirLabel
+      this.invitationDid = props.invitationDid
       this.state = props.state
       this.role = props.role
       this.alias = props.alias
@@ -96,9 +103,11 @@ export class ConnectionRecord
       this.invitation = props.invitation
       this.threadId = props.threadId
       this.imageUrl = props.imageUrl
-      this.multiUseInvitation = props.multiUseInvitation
+      this.multiUseInvitation = props.multiUseInvitation || false
       this.mediatorId = props.mediatorId
       this.errorMessage = props.errorMessage
+      this.protocol = props.protocol
+      this.outOfBandId = props.outOfBandId
     }
   }
 
@@ -116,6 +125,8 @@ export class ConnectionRecord
       mediatorId: this.mediatorId,
       did: this.did,
       theirDid: this.theirDid,
+      invitationDid: this.invitationDid,
+      outOfBandId: this.outOfBandId,
     }
   }
 
@@ -140,7 +151,15 @@ export class ConnectionRecord
   }
 
   public get isReady() {
-    return [ConnectionState.Responded, ConnectionState.Complete].includes(this.state)
+    return (
+      this.state &&
+      [
+        ConnectionState.Responded,
+        ConnectionState.Complete,
+        DidExchangeState.Completed,
+        DidExchangeState.ResponseSent,
+      ].includes(this.state)
+    )
   }
 
   public assertReady() {
@@ -151,19 +170,19 @@ export class ConnectionRecord
     }
   }
 
-  public assertState(expectedStates: ConnectionState | ConnectionState[]) {
+  public assertState(expectedStates: ConnectionState | DidExchangeState | (ConnectionState | DidExchangeState)[]) {
     if (!Array.isArray(expectedStates)) {
       expectedStates = [expectedStates]
     }
 
-    if (!expectedStates.includes(this.state)) {
+    if (this.state && !expectedStates.includes(this.state)) {
       throw new AriesFrameworkError(
         `Connection record is in invalid state ${this.state}. Valid states are: ${expectedStates.join(', ')}.`
       )
     }
   }
 
-  public assertRole(expectedRole: ConnectionRole) {
+  public assertRole(expectedRole: ConnectionRole | undefined) {
     if (this.role !== expectedRole) {
       throw new AriesFrameworkError(`Connection record has invalid role ${this.role}. Expected role ${expectedRole}.`)
     }

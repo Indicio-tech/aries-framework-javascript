@@ -7,9 +7,9 @@ import { SubjectInboundTransport } from '../../../../../../tests/transport/Subje
 import { SubjectOutboundTransport } from '../../../../../../tests/transport/SubjectOutboundTransport'
 import { getBaseConfig, waitForBasicMessage } from '../../../../tests/helpers'
 import { Agent } from '../../../agent/Agent'
-import { MediatorPickupStrategy } from '../MediatorPickupStrategy'
 import { ConsoleLogger, LogLevel } from '../../../logger'
 import { ConnectionRecord, HandshakeProtocol } from '../../connections'
+import { MediatorPickupStrategy } from '../MediatorPickupStrategy'
 import { MediationState } from '../models/MediationState'
 
 const recipientConfig = getBaseConfig('Mediation: Recipient', { logger: new ConsoleLogger(LogLevel.debug) })

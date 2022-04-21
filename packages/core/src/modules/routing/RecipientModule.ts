@@ -403,7 +403,7 @@ export class RecipientModule {
     if (!mediator) throw new AriesFrameworkError('Could not find mediator connection')
     return this.messageSender.sendMessage(createOutboundMessage(mediator, statusRequest))
   }
-  
+
   public async getRouting(options: GetRoutingOptions) {
     return this.mediationRecipientService.getRouting(options)
   }

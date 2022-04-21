@@ -8,6 +8,7 @@ export interface ConnectionResponseMessageOptions {
   id?: string
   threadId: string
   connectionSig: SignatureDecorator
+  parentThreadId?: string
 }
 
 /**
@@ -27,7 +28,7 @@ export class ConnectionResponseMessage extends AgentMessage {
       this.id = options.id || this.generateId()
       this.connectionSig = options.connectionSig
 
-      this.setThread({ threadId: options.threadId })
+      this.setThread({ threadId: options.threadId, parentThreadId: options.parentThreadId })
     }
   }
 

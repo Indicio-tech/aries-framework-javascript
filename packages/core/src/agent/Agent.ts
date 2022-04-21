@@ -1,4 +1,5 @@
 import type { Logger } from '../logger'
+import type { CreateOutOfBandMessageConfig } from '../modules/oob/OutOfBandModule'
 import type { InboundTransport } from '../transport/InboundTransport'
 import type { OutboundTransport } from '../transport/OutboundTransport'
 import type { InitConfig } from '../types'
@@ -20,6 +21,7 @@ import { CredentialsModule } from '../modules/credentials/CredentialsModule'
 import { DidsModule } from '../modules/dids/DidsModule'
 import { DiscoverFeaturesModule } from '../modules/discover-features'
 import { LedgerModule } from '../modules/ledger/LedgerModule'
+import { OutOfBandModule } from '../modules/oob/OutOfBandModule'
 import { ProofsModule } from '../modules/proofs/ProofsModule'
 import { MediatorModule } from '../modules/routing/MediatorModule'
 import { RecipientModule } from '../modules/routing/RecipientModule'
@@ -61,6 +63,7 @@ export class Agent {
   public readonly discovery: DiscoverFeaturesModule
   public readonly dids: DidsModule
   public readonly wallet: WalletModule
+  public readonly oob!: OutOfBandModule
 
   public constructor(
     initialConfig: InitConfig,
@@ -123,13 +126,14 @@ export class Agent {
     this.discovery = this.container.resolve(DiscoverFeaturesModule)
     this.dids = this.container.resolve(DidsModule)
     this.wallet = this.container.resolve(WalletModule)
+    this.oob = this.container.resolve(OutOfBandModule)
 
     // Listen for new messages (either from transports or somewhere else in the framework / extensions)
     this.messageSubscription = this.eventEmitter
       .observable<AgentMessageReceivedEvent>(AgentEventTypes.AgentMessageReceived)
       .pipe(
         takeUntil(this.agentConfig.stop$),
-        concatMap((e) => this.messageReceiver.receiveMessage(e.payload.message))
+        concatMap((e) => this.messageReceiver.receiveMessage(e.payload.message, { connection: e.payload.connection }))
       )
       .subscribe()
   }
@@ -254,7 +258,7 @@ export class Agent {
   }
 
   public async receiveMessage(inboundMessage: unknown, session?: TransportSession) {
-    return await this.messageReceiver.receiveMessage(inboundMessage, session)
+    return await this.messageReceiver.receiveMessage(inboundMessage, { session })
   }
 
   public get injectionContainer() {
@@ -263,5 +267,10 @@ export class Agent {
 
   public get config() {
     return this.agentConfig
+  }
+
+  public async createInvitation(config: CreateOutOfBandMessageConfig = {}) {
+    const routing = await this.mediationRecipient.getRouting({})
+    return this.oob.createInvitation({ ...config, routing })
   }
 }

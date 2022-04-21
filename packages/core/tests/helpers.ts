@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type { SubjectMessage } from '../../../tests/transport/SubjectInboundTransport'
 import type {
   AutoAcceptProof,
@@ -24,6 +25,7 @@ import { SubjectInboundTransport } from '../../../tests/transport/SubjectInbound
 import { SubjectOutboundTransport } from '../../../tests/transport/SubjectOutboundTransport'
 import { agentDependencies } from '../../node/src'
 import {
+  HandshakeProtocol,
   LogLevel,
   AgentConfig,
   AriesFrameworkError,
@@ -257,21 +259,16 @@ export function getMockConnection({
   })
 }
 
-export async function makeConnection(
-  agentA: Agent,
-  agentB: Agent,
-  config?: {
-    autoAcceptConnection?: boolean
-    alias?: string
-    mediatorId?: string
-  }
-) {
-  // eslint-disable-next-line prefer-const
-  let { invitation, connectionRecord: agentAConnection } = await agentA.connections.createConnection(config)
-  let agentBConnection = await agentB.connections.receiveInvitation(invitation)
+export async function makeConnection(agentA: Agent, agentB: Agent) {
+  const agentAOutOfBand = await agentA.createInvitation({
+    handshakeProtocols: [HandshakeProtocol.Connections],
+  })
 
-  agentAConnection = await agentA.connections.returnWhenIsConnected(agentAConnection.id)
-  agentBConnection = await agentB.connections.returnWhenIsConnected(agentBConnection.id)
+  let { connectionRecord: agentBConnection } = await agentB.oob.receiveInvitation(agentAOutOfBand.outOfBandMessage)
+
+  agentBConnection = await agentB.connections.returnWhenIsConnected(agentBConnection!.id)
+  let agentAConnection = await agentA.connections.findByOutOfBandId(agentAOutOfBand.id)
+  agentAConnection = await agentA.connections.returnWhenIsConnected(agentAConnection!.id)
 
   return [agentAConnection, agentBConnection]
 }

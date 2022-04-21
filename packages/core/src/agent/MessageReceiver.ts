@@ -10,6 +10,7 @@ import { Lifecycle, scoped } from 'tsyringe'
 import { AriesFrameworkError } from '../error'
 import { ConnectionRepository } from '../modules/connections/repository'
 import { DidRepository } from '../modules/dids/repository/DidRepository'
+import { OutOfBandService } from '../modules/oob/OutOfBandService'
 import { ProblemReportError, ProblemReportMessage, ProblemReportReason } from '../modules/problem-reports'
 import { isValidJweStructure } from '../utils/JWE'
 import { JsonTransformer } from '../utils/JsonTransformer'
@@ -35,6 +36,7 @@ export class MessageReceiver {
   private didRepository: DidRepository
   private connectionRepository: ConnectionRepository
   public readonly inboundTransports: InboundTransport[] = []
+  private outOfBandService: OutOfBandService
 
   public constructor(
     config: AgentConfig,
@@ -42,6 +44,7 @@ export class MessageReceiver {
     transportService: TransportService,
     messageSender: MessageSender,
     connectionRepository: ConnectionRepository,
+    outOfBandService: OutOfBandService,
     dispatcher: Dispatcher,
     didRepository: DidRepository
   ) {
@@ -50,6 +53,7 @@ export class MessageReceiver {
     this.transportService = transportService
     this.messageSender = messageSender
     this.connectionRepository = connectionRepository
+    this.outOfBandService = outOfBandService
     this.dispatcher = dispatcher
     this.didRepository = didRepository
     this.logger = this.config.logger
@@ -65,20 +69,23 @@ export class MessageReceiver {
    *
    * @param inboundMessage the message to receive and handle
    */
-  public async receiveMessage(inboundMessage: unknown, session?: TransportSession) {
+  public async receiveMessage(
+    inboundMessage: unknown,
+    { session, connection }: { session?: TransportSession; connection?: ConnectionRecord }
+  ) {
     this.logger.debug(`Agent ${this.config.label} received message`)
     if (this.isEncryptedMessage(inboundMessage)) {
       await this.receiveEncryptedMessage(inboundMessage as EncryptedMessage, session)
     } else if (this.isPlaintextMessage(inboundMessage)) {
-      await this.receivePlaintextMessage(inboundMessage)
+      await this.receivePlaintextMessage(inboundMessage, connection)
     } else {
       throw new AriesFrameworkError('Unable to parse incoming message: unrecognized format')
     }
   }
 
-  private async receivePlaintextMessage(plaintextMessage: PlaintextMessage) {
+  private async receivePlaintextMessage(plaintextMessage: PlaintextMessage, connection?: ConnectionRecord) {
     const message = await this.transformAndValidate(plaintextMessage)
-    const messageContext = new InboundMessageContext(message, {})
+    const messageContext = new InboundMessageContext(message, { connection })
     await this.dispatcher.dispatch(messageContext)
   }
 
@@ -86,12 +93,13 @@ export class MessageReceiver {
     const decryptedMessage = await this.decryptMessage(encryptedMessage)
     const { plaintextMessage, senderKey, recipientKey } = decryptedMessage
 
-    const connection = await this.findConnectionByMessageKeys(decryptedMessage)
-
     this.logger.info(
-      `Received message with type '${plaintextMessage['@type']}' from connection ${connection?.id} (${connection?.theirLabel})`,
+      `Received message with type '${plaintextMessage['@type']}', recipient key ${recipientKey} and sender key ${senderKey}`,
       plaintextMessage
     )
+
+    const connection = await this.findConnectionByMessageKeys(decryptedMessage)
+    const outOfBand = (recipientKey && (await this.outOfBandService.findByRecipientKey(recipientKey))) || undefined
 
     const message = await this.transformAndValidate(plaintextMessage, connection)
 
@@ -110,7 +118,9 @@ export class MessageReceiver {
       // We allow unready connections to be attached to the session as we want to be able to
       // use return routing to make connections. This is especially useful for creating connections
       // with mediators when you don't have a public endpoint yet.
+      // session.connection = connection ?? unverifiedConnection ?? undefined
       session.connection = connection ?? undefined
+      session.outOfBand = outOfBand
       this.transportService.saveSession(session)
     }
 
@@ -211,9 +221,7 @@ export class MessageReceiver {
 
       // Throw error if the recipient key (ourKey) does not match the key of the connection record
       if (connection && connection.theirKey !== null && connection.theirKey !== senderKey) {
-        throw new AriesFrameworkError(
-          `Inbound message senderKey '${senderKey}' is different from connection.theirKey '${connection.theirKey}'`
-        )
+        return null
       }
     }
 

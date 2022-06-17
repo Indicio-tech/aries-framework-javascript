@@ -175,7 +175,7 @@ export class ConnectionService {
       did: connectionRecord.did,
       didDoc: connectionRecord.didDoc,
       imageUrl: myImageUrl ?? this.config.connectionImageUrl,
-      parentThreadId: outOfBandRecord.id,
+      parentThreadId: outOfBandRecord.outOfBandMessage.id,
     })
 
     if (autoAcceptConnection !== undefined || autoAcceptConnection !== null) {

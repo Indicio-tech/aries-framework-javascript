@@ -66,7 +66,7 @@ export class V2CredentialService<CFs extends CredentialFormat[] = CredentialForm
   private credentialFormatCoordinator: CredentialFormatCoordinator<CFs>
   protected didCommMessageRepository: DidCommMessageRepository
   private mediationRecipientService: MediationRecipientService
-  private formatServiceMap: { [key: string]: CredentialFormatService }
+  public formatServiceMap: { [key: string]: CredentialFormatService }
 
   public constructor(
     connectionService: ConnectionService,

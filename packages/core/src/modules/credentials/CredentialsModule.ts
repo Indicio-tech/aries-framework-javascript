@@ -41,6 +41,7 @@ import { RevocationNotificationService } from './protocol/revocation-notificatio
 import { V1CredentialService } from './protocol/v1/V1CredentialService'
 import { V2CredentialService } from './protocol/v2/V2CredentialService'
 import { CredentialRepository } from './repository/CredentialRepository'
+import { W3cCredentialService } from '../vc'
 
 export interface CredentialsModule<CFs extends CredentialFormat[], CSs extends CredentialService<CFs>[]> {
   // Proposal methods
@@ -96,7 +97,8 @@ export class CredentialsModule<
   private didCommMessageRepo: DidCommMessageRepository
   private mediatorRecipientService: MediationRecipientService
   private logger: Logger
-  private serviceMap: ServiceMap<CFs, CSs>
+  public serviceMap: ServiceMap<CFs, CSs>
+  public w3cCredentialService: W3cCredentialService
 
   public constructor(
     messageSender: MessageSender,
@@ -107,6 +109,7 @@ export class CredentialsModule<
     didCommMessageRepository: DidCommMessageRepository,
     v1Service: V1CredentialService,
     v2Service: V2CredentialService<CFs>,
+    w3cCredentialService: W3cCredentialService,
     // only injected so the handlers will be registered
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _revocationNotificationService: RevocationNotificationService
@@ -118,6 +121,7 @@ export class CredentialsModule<
     this.mediatorRecipientService = mediationRecipientService
     this.didCommMessageRepo = didCommMessageRepository
     this.logger = agentConfig.logger
+    this.w3cCredentialService = w3cCredentialService
 
     // Dynamically build service map. This will be extracted once services are registered dynamically
     this.serviceMap = [v1Service, v2Service].reduce(

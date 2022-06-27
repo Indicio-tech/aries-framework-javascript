@@ -25,7 +25,7 @@ import { getKeyDidMappingByVerificationMethod } from '../dids/domain/key-type'
 
 import { SignatureSuiteRegistry } from './SignatureSuiteRegistry'
 import { orArrayToArray, w3cDate } from './jsonldUtil'
-import jsonld, { documentLoaderNode, documentLoaderXhr } from './libraries/jsonld'
+import jsonld, { /*documentLoaderNode,*/ documentLoaderXhr } from './libraries/jsonld'
 import vc from './libraries/vc'
 import { W3cVerifiableCredential } from './models'
 import { W3cCredentialRecord } from './models/credential/W3cCredentialRecord'
@@ -36,7 +36,7 @@ import { deriveProof } from './signature-suites/bbs'
 
 @scoped(Lifecycle.ContainerScoped)
 export class W3cCredentialService {
-  private wallet: Wallet
+  public wallet: Wallet
   private w3cCredentialRepository: W3cCredentialRepository
   private didResolver: DidResolverService
   private suiteRegistry: SignatureSuiteRegistry
@@ -292,9 +292,9 @@ export class W3cCredentialService {
 
     let loader
 
-    if (isNodeJS()) {
+    /*if (isNodeJS()) {
       loader = documentLoaderNode.apply(jsonld, [])
-    } else if (isReactNative()) {
+    } else */if (isReactNative()) {
       loader = documentLoaderXhr.apply(jsonld, [])
     } else {
       throw new AriesFrameworkError('Unsupported environment')

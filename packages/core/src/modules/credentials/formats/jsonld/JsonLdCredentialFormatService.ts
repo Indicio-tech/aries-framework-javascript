@@ -21,7 +21,7 @@ import type { JsonLdCredentialFormat } from './JsonLdCredentialFormat'
 
 import { Lifecycle, scoped } from 'tsyringe'
 
-import { AriesFrameworkError } from '../../../../../src/error'
+import { AriesFrameworkError } from '../../../../error'
 import { EventEmitter } from '../../../../agent/EventEmitter'
 import { JsonTransformer } from '../../../../utils/JsonTransformer'
 import { MessageValidator } from '../../../../utils/MessageValidator'
@@ -39,7 +39,7 @@ const JSONLD_VC = 'aries/ld-proof-vc@1.0'
 
 @scoped(Lifecycle.ContainerScoped)
 export class JsonLdCredentialFormatService extends CredentialFormatService<JsonLdCredentialFormat> {
-  private w3cCredentialService: W3cCredentialService
+  public w3cCredentialService: W3cCredentialService
 
   public constructor(
     credentialRepository: CredentialRepository,

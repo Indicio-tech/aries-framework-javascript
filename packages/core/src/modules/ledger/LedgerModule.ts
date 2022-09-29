@@ -26,6 +26,15 @@ export class LedgerModule {
   public async connectToPools() {
     await this.ledgerService.connectToPools()
   }
+  
+  /**
+   * Get all ledger pools
+   * 
+   */
+  public get pools() {
+    return this.ledgerService.pools
+  }
+
 
   public async registerPublicDid(did: string, verkey: string, alias: string, role?: NymRole) {
     const myPublicDid = this.wallet.publicDid?.did

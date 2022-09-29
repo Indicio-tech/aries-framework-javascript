@@ -51,6 +51,10 @@ export class IndyLedgerService {
     return this.indyPoolService.connectToPools()
   }
 
+  public get pools () {
+    return this.indyPoolService.pools
+  }
+
   public async registerPublicDid(
     submitterDid: string,
     targetDid: string,

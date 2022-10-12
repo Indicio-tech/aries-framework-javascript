@@ -96,6 +96,7 @@ export class V2CredentialService<CFs extends CredentialFormat[] = CredentialForm
 
     this.registerHandlers()
   }
+  
 
   /**
    * The version of the issue credential protocol this service supports

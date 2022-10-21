@@ -148,6 +148,7 @@ const credentialOfferMessage = new V2OfferCredentialMessage({
 const credentialIssueMessage = new V2IssueCredentialMessage({
   credentialAttachments: [credentialAttachment],
   formats: [credentialFormat],
+  credentialSupplements: [],
 })
 credentialIssueMessage.setThread({ threadId: 'somethreadid' })
 

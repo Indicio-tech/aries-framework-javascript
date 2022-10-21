@@ -1,4 +1,5 @@
 import type { Attachment } from '../../../../decorators/attachment/Attachment'
+import type { Supplements } from '../../../../decorators/supplements/Supplements'
 import type { DidCommMessageRepository } from '../../../../storage'
 import type { CredentialFormat, CredentialFormatPayload, CredentialFormatService } from '../../formats'
 import type { CredentialFormatSpec } from '../../models'
@@ -429,6 +430,7 @@ export class CredentialFormatCoordinator<CFs extends CredentialFormat[]> {
     // create message. there are two arrays in each message, one for formats the other for attachments
     const formats: CredentialFormatSpec[] = []
     const credentialAttachments: Attachment[] = []
+    const credentialSupplements: Supplements[] = []
 
     for (const formatService of formatServices) {
       const requestAttachment = this.getAttachmentForService(
@@ -456,6 +458,7 @@ export class CredentialFormatCoordinator<CFs extends CredentialFormat[]> {
       formats,
       credentialAttachments: credentialAttachments,
       comment,
+      credentialSupplements: credentialSupplements,
     })
 
     message.setThread({ threadId: credentialRecord.threadId })

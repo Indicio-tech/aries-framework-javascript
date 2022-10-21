@@ -1,3 +1,5 @@
+import type { Supplements } from '../../../../../decorators/supplements/Supplements'
+
 import { Expose, Type } from 'class-transformer'
 import { IsArray, IsInstance, IsOptional, IsString, ValidateNested } from 'class-validator'
 
@@ -11,6 +13,7 @@ export interface V2IssueCredentialMessageProps {
   comment?: string
   formats: CredentialFormatSpec[]
   credentialAttachments: Attachment[]
+  credentialSupplements: Supplements[]
 }
 
 export class V2IssueCredentialMessage extends AgentMessage {
@@ -22,6 +25,7 @@ export class V2IssueCredentialMessage extends AgentMessage {
       this.comment = options.comment
       this.formats = options.formats
       this.credentialAttachments = options.credentialAttachments
+      this.credentialSupplements = options.credentialSupplements
     }
   }
   @Type(() => CredentialFormatSpec)
@@ -46,6 +50,8 @@ export class V2IssueCredentialMessage extends AgentMessage {
   })
   @IsInstance(Attachment, { each: true })
   public credentialAttachments!: Attachment[]
+
+  public credentialSupplements!: Supplements[]
 
   public getCredentialAttachmentById(id: string): Attachment | undefined {
     return this.credentialAttachments.find((attachment) => attachment.id == id)

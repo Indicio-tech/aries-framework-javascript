@@ -1,10 +1,9 @@
-import type { Supplements } from '../../../../../decorators/supplements/Supplements'
-
 import { Expose, Type } from 'class-transformer'
 import { IsArray, IsInstance, IsOptional, IsString, ValidateNested } from 'class-validator'
 
 import { AgentMessage } from '../../../../../agent/AgentMessage'
 import { Attachment } from '../../../../../decorators/attachment/Attachment'
+import { Supplements } from '../../../../../decorators/supplements/Supplements'
 import { IsValidMessageType, parseMessageType } from '../../../../../utils/messageType'
 import { CredentialFormatSpec } from '../../../models'
 
@@ -51,6 +50,13 @@ export class V2IssueCredentialMessage extends AgentMessage {
   @IsInstance(Attachment, { each: true })
   public credentialAttachments!: Attachment[]
 
+  @Expose({ name: 'supplements' })
+  @Type(() => Supplements)
+  @IsArray()
+  @ValidateNested({
+    each: true,
+  })
+  @IsInstance(Supplements, { each: true })
   public credentialSupplements!: Supplements[]
 
   public getCredentialAttachmentById(id: string): Attachment | undefined {

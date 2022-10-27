@@ -4,6 +4,7 @@ import type { Attachment } from '../../decorators/attachment/Attachment'
 import type { Logger } from '../../logger'
 import type { ConnectionRecord, Routing, ConnectionInvitationMessage } from '../../modules/connections'
 import type { DependencyManager } from '../../plugins'
+import type { Query } from '../../storage/StorageService'
 import type { PlaintextMessage } from '../../types'
 import type { Key } from '../dids'
 import type { HandshakeReusedEvent } from './domain/OutOfBandEvents'
@@ -45,7 +46,7 @@ const didCommProfiles = ['didcomm/aip1', 'didcomm/aip2;env=rfc19']
 
 export interface CreateOutOfBandInvitationConfig {
   label?: string
-  alias?: string
+  alias?: string // alias for a connection record to be created
   imageUrl?: string
   goalCode?: string
   goal?: string
@@ -60,7 +61,7 @@ export interface CreateOutOfBandInvitationConfig {
 
 export interface CreateLegacyInvitationConfig {
   label?: string
-  alias?: string
+  alias?: string // alias for a connection record to be created
   imageUrl?: string
   multiUseInvitation?: boolean
   autoAcceptConnection?: boolean
@@ -207,6 +208,7 @@ export class OutOfBandModule {
       mediatorId: routing.mediatorId,
       role: OutOfBandRole.Sender,
       state: OutOfBandState.AwaitResponse,
+      alias: config.alias,
       outOfBandInvitation: outOfBandInvitation,
       reusable: multiUseInvitation,
       autoAcceptConnection,
@@ -531,6 +533,15 @@ export class OutOfBandModule {
    */
   public getAll() {
     return this.outOfBandService.getAll()
+  }
+
+  /**
+   * Retrieve all out of bands records by specified query param
+   *
+   * @returns List containing all out of band records matching specified query params
+   */
+  public findAllByQuery(query: Query<OutOfBandRecord>) {
+    return this.outOfBandService.findAllByQuery(query)
   }
 
   /**

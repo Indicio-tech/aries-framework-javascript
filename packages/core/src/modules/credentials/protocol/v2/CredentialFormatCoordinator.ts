@@ -295,6 +295,7 @@ export class CredentialFormatCoordinator<CFs extends CredentialFormat[]> {
     // create message. there are two arrays in each message, one for formats the other for attachments
     const formats: CredentialFormatSpec[] = []
     const requestAttachments: Attachment[] = []
+    const requestSupplements: Supplements[] = []
 
     for (const formatService of formatServices) {
       const offerAttachment = this.getAttachmentForService(
@@ -318,6 +319,7 @@ export class CredentialFormatCoordinator<CFs extends CredentialFormat[]> {
     const message = new V2RequestCredentialMessage({
       formats,
       requestAttachments: requestAttachments,
+      requestSupplements: requestSupplements,
       comment,
     })
 
@@ -353,6 +355,7 @@ export class CredentialFormatCoordinator<CFs extends CredentialFormat[]> {
     // create message. there are two arrays in each message, one for formats the other for attachments
     const formats: CredentialFormatSpec[] = []
     const requestAttachments: Attachment[] = []
+    const requestSupplements: Supplements[] = []
 
     for (const formatService of formatServices) {
       const { format, attachment } = await formatService.createRequest({
@@ -368,6 +371,7 @@ export class CredentialFormatCoordinator<CFs extends CredentialFormat[]> {
       formats,
       comment,
       requestAttachments: requestAttachments,
+      requestSupplements: requestSupplements,
     })
 
     message.setThread({ threadId: credentialRecord.threadId })

@@ -4,6 +4,7 @@ import { IsArray, IsInstance, IsOptional, IsString, ValidateNested } from 'class
 import { AgentMessage } from '../../../../../agent/AgentMessage'
 import { Attachment } from '../../../../../decorators/attachment/Attachment'
 import { Supplements } from '../../../../../decorators/supplements/Supplements'
+import { SupplementDecorated } from '../../../../../decorators/supplements/SupplementsExtension'
 import { IsValidMessageType, parseMessageType } from '../../../../../utils/messageType'
 import { CredentialFormatSpec } from '../../../models'
 
@@ -12,10 +13,12 @@ export interface V2IssueCredentialMessageProps {
   comment?: string
   formats: CredentialFormatSpec[]
   credentialAttachments: Attachment[]
-  credentialSupplements: Supplements[]
+  credentialSupplements?: Supplements[]
+  supplementsAttachments?: Attachment[]
 }
+const supplmentedMessage = SupplementDecorated(AgentMessage)
 
-export class V2IssueCredentialMessage extends AgentMessage {
+export class V2IssueCredentialMessage extends supplmentedMessage {
   public constructor(options: V2IssueCredentialMessageProps) {
     super()
 
@@ -24,7 +27,8 @@ export class V2IssueCredentialMessage extends AgentMessage {
       this.comment = options.comment
       this.formats = options.formats
       this.credentialAttachments = options.credentialAttachments
-      this.credentialSupplements = options.credentialSupplements
+      this.credentialSupplements = options.credentialSupplements ?? []
+      this.supplementAttachments = options.supplementsAttachments ?? []
     }
   }
   @Type(() => CredentialFormatSpec)
@@ -58,6 +62,15 @@ export class V2IssueCredentialMessage extends AgentMessage {
   })
   @IsInstance(Supplements, { each: true })
   public credentialSupplements!: Supplements[]
+
+  @Expose({ name: '~attach' })
+  @Type(() => Attachment)
+  @IsArray()
+  @ValidateNested({
+    each: true,
+  })
+  @IsInstance(Attachment, { each: true })
+  public supplementAttachments!: Attachment[]
 
   public getCredentialAttachmentById(id: string): Attachment | undefined {
     return this.credentialAttachments.find((attachment) => attachment.id == id)

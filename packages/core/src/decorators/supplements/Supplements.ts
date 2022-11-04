@@ -24,7 +24,7 @@ export class Supplements {
   @Expose({ name: '@id' })
   public id!: string
 
-  @Expose({ name: '@type' })
+  @Expose({ name: 'type' })
   public type!: SupplementTypes
 
   @Expose({ name: 'refs' })

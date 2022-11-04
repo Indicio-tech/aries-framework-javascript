@@ -3,6 +3,8 @@ import { IsArray, IsInstance, IsOptional, IsString, ValidateNested } from 'class
 
 import { AgentMessage } from '../../../../../agent/AgentMessage'
 import { Attachment } from '../../../../../decorators/attachment/Attachment'
+import { Supplements } from '../../../../../decorators/supplements/Supplements'
+import { SupplementDecorated } from '../../../../../decorators/supplements/SupplementsExtension'
 import { IsValidMessageType, parseMessageType } from '../../../../../utils/messageType'
 import { CredentialFormatSpec } from '../../../models'
 
@@ -10,10 +12,14 @@ export interface V2RequestCredentialMessageOptions {
   id?: string
   formats: CredentialFormatSpec[]
   requestAttachments: Attachment[]
+  requestSupplements?: Supplements[]
+  supplementsAttachments?: Attachment[]
   comment?: string
 }
 
-export class V2RequestCredentialMessage extends AgentMessage {
+const supplementedMessage = SupplementDecorated(AgentMessage)
+
+export class V2RequestCredentialMessage extends supplementedMessage {
   public constructor(options: V2RequestCredentialMessageOptions) {
     super()
     if (options) {
@@ -21,6 +27,8 @@ export class V2RequestCredentialMessage extends AgentMessage {
       this.comment = options.comment
       this.formats = options.formats
       this.requestAttachments = options.requestAttachments
+      this.requestSupplements = options.requestSupplements ?? []
+      this.supplementAttachments = options.supplementsAttachments ?? []
     }
   }
 
@@ -42,6 +50,24 @@ export class V2RequestCredentialMessage extends AgentMessage {
   })
   @IsInstance(Attachment, { each: true })
   public requestAttachments!: Attachment[]
+
+  @Expose({ name: 'supplements' })
+  @Type(() => Supplements)
+  @IsArray()
+  @ValidateNested({
+    each: true,
+  })
+  @IsInstance(Supplements, { each: true })
+  public requestSupplements!: Supplements[]
+
+  @Expose({ name: '~attach' })
+  @Type(() => Attachment)
+  @IsArray()
+  @ValidateNested({
+    each: true,
+  })
+  @IsInstance(Attachment, { each: true })
+  public supplementAttachments!: Attachment[]
 
   /**
    * Human readable information about this Credential Request,

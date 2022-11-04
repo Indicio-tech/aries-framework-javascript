@@ -5,7 +5,6 @@ import { AckDecorated } from '../decorators/ack/AckDecoratorExtension'
 import { AttachmentDecorated } from '../decorators/attachment/AttachmentExtension'
 import { L10nDecorated } from '../decorators/l10n/L10nDecoratorExtension'
 import { ServiceDecorated } from '../decorators/service/ServiceDecoratorExtension'
-import { SupplementDecorated } from '../decorators/supplements/SupplementsExtension'
 import { ThreadDecorated } from '../decorators/thread/ThreadDecoratorExtension'
 import { TimingDecorated } from '../decorators/timing/TimingDecoratorExtension'
 import { TransportDecorated } from '../decorators/transport/TransportDecoratorExtension'
@@ -17,11 +16,7 @@ import { BaseMessage } from './BaseMessage'
 export type ConstructableAgentMessage = Constructor<AgentMessage> & { type: ParsedMessageType }
 
 const Decorated = ThreadDecorated(
-  L10nDecorated(
-    TransportDecorated(
-      TimingDecorated(AckDecorated(AttachmentDecorated(ServiceDecorated(SupplementDecorated(BaseMessage)))))
-    )
-  )
+  L10nDecorated(TransportDecorated(TimingDecorated(AckDecorated(AttachmentDecorated(ServiceDecorated(BaseMessage))))))
 )
 
 export class AgentMessage extends Decorated {

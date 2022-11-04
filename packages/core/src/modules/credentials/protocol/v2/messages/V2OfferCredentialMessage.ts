@@ -3,6 +3,8 @@ import { IsArray, IsInstance, IsOptional, IsString, ValidateNested } from 'class
 
 import { AgentMessage } from '../../../../../agent/AgentMessage'
 import { Attachment } from '../../../../../decorators/attachment/Attachment'
+import { Supplements } from '../../../../../decorators/supplements/Supplements'
+import { SupplementDecorated } from '../../../../../decorators/supplements/SupplementsExtension'
 import { IsValidMessageType, parseMessageType } from '../../../../../utils/messageType'
 import { CredentialFormatSpec } from '../../../models'
 
@@ -12,12 +14,16 @@ export interface V2OfferCredentialMessageOptions {
   id?: string
   formats: CredentialFormatSpec[]
   offerAttachments: Attachment[]
+  offerSupplements?: Supplements[]
+  supplementsAttachments?: Attachment[]
   credentialPreview: V2CredentialPreview
   replacementId?: string
   comment?: string
 }
 
-export class V2OfferCredentialMessage extends AgentMessage {
+const supplementedMessage = SupplementDecorated(AgentMessage)
+
+export class V2OfferCredentialMessage extends supplementedMessage {
   public constructor(options: V2OfferCredentialMessageOptions) {
     super()
     if (options) {
@@ -26,6 +32,8 @@ export class V2OfferCredentialMessage extends AgentMessage {
       this.formats = options.formats
       this.credentialPreview = options.credentialPreview
       this.offerAttachments = options.offerAttachments
+      this.offerSupplements = options.offerSupplements ?? []
+      this.supplementAttachments = options.supplementsAttachments ?? []
     }
   }
 
@@ -57,6 +65,24 @@ export class V2OfferCredentialMessage extends AgentMessage {
   })
   @IsInstance(Attachment, { each: true })
   public offerAttachments!: Attachment[]
+
+  @Expose({ name: 'supplements' })
+  @Type(() => Supplements)
+  @IsArray()
+  @ValidateNested({
+    each: true,
+  })
+  @IsInstance(Supplements, { each: true })
+  public offerSupplements!: Supplements[]
+
+  @Expose({ name: '~attach' })
+  @Type(() => Attachment)
+  @IsArray()
+  @ValidateNested({
+    each: true,
+  })
+  @IsInstance(Attachment, { each: true })
+  public supplementAttachments!: Attachment[]
 
   @Expose({ name: 'replacement_id' })
   @IsString()

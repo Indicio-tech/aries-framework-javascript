@@ -128,6 +128,9 @@ export class CredentialFormatCoordinator<CFs extends CredentialFormat[]> {
       messageClass: V2ProposeCredentialMessage,
     })
 
+    const offerSupplements: Supplements[] = proposalMessage.proposeSupplements || []
+    const supplementsAttachments: Attachment[] = proposalMessage.supplementAttachments || []
+
     // NOTE: We set the credential attributes from the proposal on the record as we've 'accepted' them
     // and can now use them to create the offer in the format services. It may be overwritten later on
     // if the user provided other attributes in the credentialFormats array.
@@ -171,6 +174,8 @@ export class CredentialFormatCoordinator<CFs extends CredentialFormat[]> {
       credentialPreview,
       offerAttachments,
       comment,
+      offerSupplements,
+      supplementsAttachments,
     })
 
     message.setThread({ threadId: credentialRecord.threadId })
@@ -295,7 +300,8 @@ export class CredentialFormatCoordinator<CFs extends CredentialFormat[]> {
     // create message. there are two arrays in each message, one for formats the other for attachments
     const formats: CredentialFormatSpec[] = []
     const requestAttachments: Attachment[] = []
-    const requestSupplements: Supplements[] = []
+    const requestSupplements: Supplements[] = offerMessage.offerSupplements || []
+    const supplementsAttachments: Attachment[] = offerMessage.supplementAttachments || []
 
     for (const formatService of formatServices) {
       const offerAttachment = this.getAttachmentForService(
@@ -320,6 +326,7 @@ export class CredentialFormatCoordinator<CFs extends CredentialFormat[]> {
       formats,
       requestAttachments: requestAttachments,
       requestSupplements: requestSupplements,
+      supplementsAttachments: supplementsAttachments,
       comment,
     })
 
@@ -434,7 +441,8 @@ export class CredentialFormatCoordinator<CFs extends CredentialFormat[]> {
     // create message. there are two arrays in each message, one for formats the other for attachments
     const formats: CredentialFormatSpec[] = []
     const credentialAttachments: Attachment[] = []
-    const credentialSupplements: Supplements[] = []
+    const credentialSupplements: Supplements[] = offerMessage?.offerSupplements || []
+    const supplementAttachments: Attachment[] = offerMessage?.supplementAttachments || []
 
     for (const formatService of formatServices) {
       const requestAttachment = this.getAttachmentForService(
@@ -463,6 +471,7 @@ export class CredentialFormatCoordinator<CFs extends CredentialFormat[]> {
       credentialAttachments: credentialAttachments,
       comment,
       credentialSupplements: credentialSupplements,
+      supplementsAttachments: supplementAttachments,
     })
 
     message.setThread({ threadId: credentialRecord.threadId })

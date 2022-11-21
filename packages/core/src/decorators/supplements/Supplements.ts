@@ -8,7 +8,7 @@ import { SupplementTypes } from './SupplementsTypes'
 export interface SupplementOptions {
   id?: string
   type: SupplementTypes
-  refs: string
+  ref: string
   attrs?: [{ key: string; value: string }]
 }
 
@@ -17,7 +17,7 @@ export class Supplements {
     if (options) {
       this.id = options.id ?? uuid()
       this.type = options.type
-      this.refs = options.refs
+      this.ref = options.ref
       this.attrs = options.attrs
     }
   }
@@ -27,9 +27,9 @@ export class Supplements {
   @Expose({ name: 'type' })
   public type!: SupplementTypes
 
-  @Expose({ name: 'refs' })
+  @Expose({ name: 'ref' })
   @IsString()
-  public refs!: string
+  public ref!: string
 
   @IsOptional()
   public attrs?: [{ key: string; value: string }]

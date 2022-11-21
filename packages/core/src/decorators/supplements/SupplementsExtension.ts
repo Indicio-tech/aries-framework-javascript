@@ -1,7 +1,7 @@
 import type { BaseMessageConstructor } from '../../agent/BaseMessage'
 
 import { Expose, Type } from 'class-transformer'
-import { IsInstance, ValidateNested } from 'class-validator'
+import { IsOptional, IsInstance, ValidateNested } from 'class-validator'
 
 import { Supplements } from './Supplements'
 
@@ -14,6 +14,7 @@ export function SupplementDecorated<T extends BaseMessageConstructor>(Base: T) {
     @Type(() => Supplements)
     @ValidateNested()
     @IsInstance(Supplements, { each: true })
+    @IsOptional()
     public appendedSupplements?: Supplements[]
 
     public addAppendedSupplements(supplement: Supplements): void {

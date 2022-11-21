@@ -53,20 +53,20 @@ export class V2RequestCredentialMessage extends supplementedMessage {
 
   @Expose({ name: 'supplements' })
   @Type(() => Supplements)
-  @IsArray()
   @ValidateNested({
     each: true,
   })
   @IsInstance(Supplements, { each: true })
+  @IsOptional()
   public requestSupplements!: Supplements[]
 
   @Expose({ name: '~attach' })
   @Type(() => Attachment)
-  @IsArray()
   @ValidateNested({
     each: true,
   })
   @IsInstance(Attachment, { each: true })
+  @IsOptional()
   public supplementAttachments!: Attachment[]
 
   /**

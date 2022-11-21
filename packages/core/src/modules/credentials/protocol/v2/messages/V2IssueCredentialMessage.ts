@@ -16,9 +16,9 @@ export interface V2IssueCredentialMessageProps {
   credentialSupplements?: Supplements[]
   supplementsAttachments?: Attachment[]
 }
-const supplmentedMessage = SupplementDecorated(AgentMessage)
+const supplementedMessage = SupplementDecorated(AgentMessage)
 
-export class V2IssueCredentialMessage extends supplmentedMessage {
+export class V2IssueCredentialMessage extends supplementedMessage {
   public constructor(options: V2IssueCredentialMessageProps) {
     super()
 

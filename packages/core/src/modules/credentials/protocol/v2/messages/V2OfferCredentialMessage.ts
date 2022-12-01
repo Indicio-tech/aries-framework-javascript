@@ -68,20 +68,20 @@ export class V2OfferCredentialMessage extends supplementedMessage {
 
   @Expose({ name: 'supplements' })
   @Type(() => Supplements)
-  @IsArray()
   @ValidateNested({
     each: true,
   })
   @IsInstance(Supplements, { each: true })
+  @IsOptional()
   public offerSupplements!: Supplements[]
 
   @Expose({ name: '~attach' })
   @Type(() => Attachment)
-  @IsArray()
   @ValidateNested({
     each: true,
   })
   @IsInstance(Attachment, { each: true })
+  @IsOptional()
   public supplementAttachments!: Attachment[]
 
   @Expose({ name: 'replacement_id' })

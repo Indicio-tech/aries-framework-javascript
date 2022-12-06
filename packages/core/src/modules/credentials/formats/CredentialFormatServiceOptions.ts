@@ -1,3 +1,4 @@
+import type { Supplements } from '../../../decorators/supplements/Supplements'
 import type { Attachment } from '../../../decorators/attachment/Attachment'
 import type { CredentialFormatSpec } from '../models/CredentialFormatSpec'
 import type { CredentialPreviewAttribute } from '../models/CredentialPreviewAttribute'
@@ -38,6 +39,8 @@ export interface FormatCreateReturn {
 export interface FormatProcessOptions {
   attachment: Attachment
   credentialRecord: CredentialExchangeRecord
+  supplements?: Supplements[],
+  attachments?: Attachment[],
 }
 
 export interface FormatCreateProposalOptions<CF extends CredentialFormat> {

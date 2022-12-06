@@ -20,6 +20,9 @@ import type {
 } from '../CredentialFormatServiceOptions'
 import type { IndyCredentialFormat } from './IndyCredentialFormat'
 import type * as Indy from 'indy-sdk'
+import { HashlinkEncoder } from '../../../../utils/HashlinkEncoder'
+import { TypedArrayEncoder } from '../../../../utils/TypedArrayEncoder'
+import { Supplements } from '../../../../decorators/supplements/Supplements'
 
 import { AgentConfig } from '../../../../agent/AgentConfig'
 import { EventEmitter } from '../../../../agent/EventEmitter'
@@ -79,6 +82,62 @@ export class IndyCredentialFormatService extends CredentialFormatService<IndyCre
     this.didResolver = didResolver
     this.wallet = wallet
     this.logger = agentConfig.logger
+  }
+
+  private retrieve_supplement_info = (supplements: Supplements[]) => {
+    let attribute_names = [];
+    for (let supplement of supplements){
+      if (supplement.attrs !== undefined){
+        const attrib_name: string = supplement.attrs[0]["value"]
+        const supplement_ref: string = supplement.ref
+        attribute_names.push({attrib_name, supplement_ref})
+      }
+    }
+    return attribute_names
+  }
+
+  private retrieve_hashlink = (credentialRecord: CredentialExchangeRecord, attribute_name: string) => {
+    let attrib = undefined;
+    if (credentialRecord.credentialAttributes) {
+      for (const attr of credentialRecord.credentialAttributes) {
+          if (attr["name"] == attribute_name) {
+              attrib = attr;
+              break;
+          }
+      }
+      if (!attrib)
+          throw new Error(`Could not retrieve attribute ${attribute_name}`);
+    }
+    return attrib?.value
+  }
+
+  private retrieve_attachment_data = (attachments: Attachment[], attachment_id: string) => {
+    let attachment_data = undefined;
+    for (let attach of attachments){
+      if (attach.id == attachment_id){
+        attachment_data = attach.data.base64;
+        break;
+      }
+    }
+    if (!attachment_data){
+      throw new Error(`Could not retrieve attachment data associated with @id ${attachment_id}`)
+    }
+    return attachment_data
+  }
+
+  private verify_attachment_data = (credentialRecord: CredentialExchangeRecord, supplements: Supplements[], attachments: Attachment[]) => {
+    const supplement_info = this.retrieve_supplement_info(supplements)
+    for (let supp of supplement_info){
+      const hashlink = this.retrieve_hashlink(credentialRecord, supp["attrib_name"])
+      const attachment_data = this.retrieve_attachment_data(attachments, supp["supplement_ref"])
+      const calculated_hashlink = HashlinkEncoder.encode(TypedArrayEncoder.fromBase64(attachment_data), 'sha2-256', 'base58btc')
+      if (hashlink == calculated_hashlink){
+        console.log("Supplements verified")
+        return true
+      } else {
+        throw new Error("Attachment data could not be verified")
+      }
+    }
   }
 
   public readonly formatKey = 'indy' as const

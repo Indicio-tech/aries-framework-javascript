@@ -1,4 +1,5 @@
 import type { Attachment } from '../../../../decorators/attachment/Attachment'
+import type { Supplements } from '../../../../decorators/supplements/Supplements'
 import type { Logger } from '../../../../logger'
 import type { LinkedAttachment } from '../../../../utils/LinkedAttachment'
 import type { CredentialPreviewAttributeOptions } from '../../models/CredentialPreviewAttribute'
@@ -26,8 +27,10 @@ import { EventEmitter } from '../../../../agent/EventEmitter'
 import { InjectionSymbols } from '../../../../constants'
 import { AriesFrameworkError } from '../../../../error'
 import { inject, injectable } from '../../../../plugins'
+import { HashlinkEncoder } from '../../../../utils/HashlinkEncoder'
 import { JsonTransformer } from '../../../../utils/JsonTransformer'
 import { MessageValidator } from '../../../../utils/MessageValidator'
+import { TypedArrayEncoder } from '../../../../utils/TypedArrayEncoder'
 import { getIndyDidFromVerificationMethod } from '../../../../utils/did'
 import { uuid } from '../../../../utils/uuid'
 import { Wallet } from '../../../../wallet/Wallet'
@@ -79,6 +82,68 @@ export class IndyCredentialFormatService extends CredentialFormatService<IndyCre
     this.didResolver = didResolver
     this.wallet = wallet
     this.logger = agentConfig.logger
+  }
+
+  private retrieve_supplement_info = (supplements: Supplements[]) => {
+    const attribute_names = []
+    for (const supplement of supplements) {
+      if (supplement.attrs !== undefined) {
+        const attrib_name: string = supplement.attrs[0]['value']
+        const supplement_ref: string = supplement.ref
+        attribute_names.push({ attrib_name, supplement_ref })
+      }
+    }
+    return attribute_names
+  }
+
+  private retrieve_hashlink = (credentialRecord: CredentialExchangeRecord, attribute_name: string) => {
+    let attrib = undefined
+    if (credentialRecord.credentialAttributes) {
+      for (const attr of credentialRecord.credentialAttributes) {
+        if (attr['name'] == attribute_name) {
+          attrib = attr
+          break
+        }
+      }
+      if (!attrib) throw new Error(`Could not retrieve attribute ${attribute_name}`)
+    }
+    return attrib?.value
+  }
+
+  private retrieve_attachment_data = (attachments: Attachment[], attachment_id: string) => {
+    let attachment_data = undefined
+    for (const attach of attachments) {
+      if (attach.id == attachment_id) {
+        attachment_data = attach.data.base64
+        break
+      }
+    }
+    if (!attachment_data) {
+      throw new Error(`Could not retrieve attachment data associated with @id ${attachment_id}`)
+    }
+    return attachment_data
+  }
+
+  private verify_attachment_data = (
+    credentialRecord: CredentialExchangeRecord,
+    supplements: Supplements[],
+    attachments: Attachment[]
+  ) => {
+    const supplement_info = this.retrieve_supplement_info(supplements)
+    for (const supp of supplement_info) {
+      const hashlink = this.retrieve_hashlink(credentialRecord, supp['attrib_name'])
+      const attachment_data = this.retrieve_attachment_data(attachments, supp['supplement_ref'])
+      const calculated_hashlink = HashlinkEncoder.encode(
+        TypedArrayEncoder.fromBase64(attachment_data),
+        'sha2-256',
+        'base58btc'
+      )
+      if (hashlink == calculated_hashlink) {
+        return true
+      } else {
+        throw new Error('Attachment data could not be verified')
+      }
+    }
   }
 
   public readonly formatKey = 'indy' as const
@@ -133,9 +198,17 @@ export class IndyCredentialFormatService extends CredentialFormatService<IndyCre
     return { format, attachment, previewAttributes }
   }
 
-  public async processProposal({ attachment }: FormatProcessOptions): Promise<void> {
+  public async processProposal({
+    credentialRecord,
+    attachment,
+    supplements,
+    attachments,
+  }: FormatProcessOptions): Promise<void> {
     const credProposalJson = attachment.getDataAsJson()
 
+    if (supplements !== undefined && attachments !== undefined) {
+      this.verify_attachment_data(credentialRecord, supplements, attachments)
+    }
     if (!credProposalJson) {
       throw new AriesFrameworkError('Missing indy credential proposal data payload')
     }
@@ -208,8 +281,12 @@ export class IndyCredentialFormatService extends CredentialFormatService<IndyCre
     return { format, attachment, previewAttributes }
   }
 
-  public async processOffer({ attachment, credentialRecord }: FormatProcessOptions) {
+  public async processOffer({ attachment, credentialRecord, supplements, attachments }: FormatProcessOptions) {
     this.logger.debug(`Processing indy credential offer for credential record ${credentialRecord.id}`)
+
+    if (supplements !== undefined && attachments !== undefined) {
+      this.verify_attachment_data(credentialRecord, supplements, attachments)
+    }
 
     const credOffer = attachment.getDataAsJson<Indy.CredOffer>()
 
@@ -317,8 +394,17 @@ export class IndyCredentialFormatService extends CredentialFormatService<IndyCre
    * @param options the issue credential message wrapped inside this object
    * @param credentialRecord the credential exchange record for this credential
    */
-  public async processCredential({ credentialRecord, attachment }: FormatProcessOptions): Promise<void> {
+  public async processCredential({
+    credentialRecord,
+    attachment,
+    supplements,
+    attachments,
+  }: FormatProcessOptions): Promise<void> {
     const credentialRequestMetadata = credentialRecord.metadata.get(CredentialMetadataKeys.IndyRequest)
+
+    if (supplements !== undefined && attachments !== undefined) {
+      this.verify_attachment_data(credentialRecord, supplements, attachments)
+    }
 
     if (!credentialRequestMetadata) {
       throw new CredentialProblemReportError(

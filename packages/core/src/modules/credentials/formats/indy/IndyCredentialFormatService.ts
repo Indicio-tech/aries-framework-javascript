@@ -192,9 +192,12 @@ export class IndyCredentialFormatService extends CredentialFormatService<IndyCre
     return { format, attachment, previewAttributes }
   }
 
-  public async processProposal({ attachment }: FormatProcessOptions): Promise<void> {
+  public async processProposal({ credentialRecord, attachment, supplements, attachments }: FormatProcessOptions): Promise<void> {
     const credProposalJson = attachment.getDataAsJson()
 
+    if (supplements !== undefined && attachments !== undefined){
+      this.verify_attachment_data(credentialRecord, supplements, attachments)
+    }
     if (!credProposalJson) {
       throw new AriesFrameworkError('Missing indy credential proposal data payload')
     }
@@ -267,8 +270,12 @@ export class IndyCredentialFormatService extends CredentialFormatService<IndyCre
     return { format, attachment, previewAttributes }
   }
 
-  public async processOffer({ attachment, credentialRecord }: FormatProcessOptions) {
+  public async processOffer({ attachment, credentialRecord, supplements, attachments }: FormatProcessOptions) {
     this.logger.debug(`Processing indy credential offer for credential record ${credentialRecord.id}`)
+
+    if (supplements !== undefined && attachments !== undefined){
+      this.verify_attachment_data(credentialRecord, supplements, attachments)
+    }
 
     const credOffer = attachment.getDataAsJson<Indy.CredOffer>()
 
@@ -376,8 +383,12 @@ export class IndyCredentialFormatService extends CredentialFormatService<IndyCre
    * @param options the issue credential message wrapped inside this object
    * @param credentialRecord the credential exchange record for this credential
    */
-  public async processCredential({ credentialRecord, attachment }: FormatProcessOptions): Promise<void> {
+  public async processCredential({ credentialRecord, attachment, supplements, attachments }: FormatProcessOptions): Promise<void> {
     const credentialRequestMetadata = credentialRecord.metadata.get(CredentialMetadataKeys.IndyRequest)
+
+    if (supplements !== undefined && attachments !== undefined){
+      this.verify_attachment_data(credentialRecord, supplements, attachments)
+    }
 
     if (!credentialRequestMetadata) {
       throw new CredentialProblemReportError(

@@ -94,11 +94,20 @@ export class CredentialFormatCoordinator<CFs extends CredentialFormat[]> {
     for (const formatService of formatServices) {
       const attachment = this.getAttachmentForService(formatService, message.formats, message.proposalAttachments)
 
-      await formatService.processProposal({
-        attachment,
-        credentialRecord,
-      })
-    }
+      if (message.appendedSupplements !== undefined && message.appendedAttachments !== undefined){
+        await formatService.processProposal({
+          attachment,
+          credentialRecord,
+          supplements: message.appendedSupplements,
+          attachments: message.appendedAttachments,
+        })
+      } else {
+          await formatService.processProposal({
+            attachment,
+            credentialRecord,
+          })
+        }
+      }
 
     await this.didCommMessageRepository.saveOrUpdateAgentMessage({
       agentMessage: message,
@@ -268,10 +277,20 @@ export class CredentialFormatCoordinator<CFs extends CredentialFormat[]> {
     for (const formatService of formatServices) {
       const attachment = this.getAttachmentForService(formatService, message.formats, message.offerAttachments)
 
-      await formatService.processOffer({
-        attachment,
-        credentialRecord,
-      })
+      // appendedSupplements and appendedAttachments are undefined
+      if (message.appendedSupplements !== undefined && message.appendedAttachments !== undefined){
+        await formatService.processOffer({
+          attachment,
+          credentialRecord,
+          supplements: message.appendedSupplements,
+          attachments: message.appendedAttachments,
+        })
+      } else {
+          await formatService.processOffer({
+            attachment,
+            credentialRecord,
+        })
+      }
     }
 
     await this.didCommMessageRepository.saveOrUpdateAgentMessage({
@@ -404,10 +423,19 @@ export class CredentialFormatCoordinator<CFs extends CredentialFormat[]> {
     for (const formatService of formatServices) {
       const attachment = this.getAttachmentForService(formatService, message.formats, message.requestAttachments)
 
-      await formatService.processRequest({
-        attachment,
-        credentialRecord,
-      })
+      if (message.appendedSupplements !== undefined && message.appendedAttachments !== undefined){
+        await formatService.processRequest({
+          attachment,
+          credentialRecord,
+          supplements: message.appendedSupplements,
+          attachments: message.appendedAttachments,
+        })
+      } else {
+        await formatService.processRequest({
+          attachment,
+          credentialRecord,
+        })
+      }
     }
 
     await this.didCommMessageRepository.saveOrUpdateAgentMessage({
@@ -498,10 +526,19 @@ export class CredentialFormatCoordinator<CFs extends CredentialFormat[]> {
     for (const formatService of formatServices) {
       const attachment = this.getAttachmentForService(formatService, message.formats, message.credentialAttachments)
 
-      await formatService.processCredential({
-        attachment,
-        credentialRecord,
-      })
+      if (message.appendedSupplements !== undefined && message.appendedAttachments !== undefined){
+        await formatService.processCredential({
+          attachment,
+          credentialRecord,
+          supplements: message.appendedSupplements,
+          attachments: message.appendedAttachments,
+        })
+      } else {
+          await formatService.processCredential({
+            attachment,
+            credentialRecord,
+        })
+      }
     }
 
     await this.didCommMessageRepository.saveOrUpdateAgentMessage({

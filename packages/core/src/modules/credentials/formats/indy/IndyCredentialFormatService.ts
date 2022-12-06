@@ -1,4 +1,5 @@
 import type { Attachment } from '../../../../decorators/attachment/Attachment'
+import type { Supplements } from '../../../../decorators/supplements/Supplements'
 import type { Logger } from '../../../../logger'
 import type { LinkedAttachment } from '../../../../utils/LinkedAttachment'
 import type { CredentialPreviewAttributeOptions } from '../../models/CredentialPreviewAttribute'
@@ -20,17 +21,16 @@ import type {
 } from '../CredentialFormatServiceOptions'
 import type { IndyCredentialFormat } from './IndyCredentialFormat'
 import type * as Indy from 'indy-sdk'
-import { HashlinkEncoder } from '../../../../utils/HashlinkEncoder'
-import { TypedArrayEncoder } from '../../../../utils/TypedArrayEncoder'
-import { Supplements } from '../../../../decorators/supplements/Supplements'
 
 import { AgentConfig } from '../../../../agent/AgentConfig'
 import { EventEmitter } from '../../../../agent/EventEmitter'
 import { InjectionSymbols } from '../../../../constants'
 import { AriesFrameworkError } from '../../../../error'
 import { inject, injectable } from '../../../../plugins'
+import { HashlinkEncoder } from '../../../../utils/HashlinkEncoder'
 import { JsonTransformer } from '../../../../utils/JsonTransformer'
 import { MessageValidator } from '../../../../utils/MessageValidator'
+import { TypedArrayEncoder } from '../../../../utils/TypedArrayEncoder'
 import { getIndyDidFromVerificationMethod } from '../../../../utils/did'
 import { uuid } from '../../../../utils/uuid'
 import { Wallet } from '../../../../wallet/Wallet'
@@ -85,57 +85,63 @@ export class IndyCredentialFormatService extends CredentialFormatService<IndyCre
   }
 
   private retrieve_supplement_info = (supplements: Supplements[]) => {
-    let attribute_names = [];
-    for (let supplement of supplements){
-      if (supplement.attrs !== undefined){
-        const attrib_name: string = supplement.attrs[0]["value"]
+    const attribute_names = []
+    for (const supplement of supplements) {
+      if (supplement.attrs !== undefined) {
+        const attrib_name: string = supplement.attrs[0]['value']
         const supplement_ref: string = supplement.ref
-        attribute_names.push({attrib_name, supplement_ref})
+        attribute_names.push({ attrib_name, supplement_ref })
       }
     }
     return attribute_names
   }
 
   private retrieve_hashlink = (credentialRecord: CredentialExchangeRecord, attribute_name: string) => {
-    let attrib = undefined;
+    let attrib = undefined
     if (credentialRecord.credentialAttributes) {
       for (const attr of credentialRecord.credentialAttributes) {
-          if (attr["name"] == attribute_name) {
-              attrib = attr;
-              break;
-          }
+        if (attr['name'] == attribute_name) {
+          attrib = attr
+          break
+        }
       }
-      if (!attrib)
-          throw new Error(`Could not retrieve attribute ${attribute_name}`);
+      if (!attrib) throw new Error(`Could not retrieve attribute ${attribute_name}`)
     }
     return attrib?.value
   }
 
   private retrieve_attachment_data = (attachments: Attachment[], attachment_id: string) => {
-    let attachment_data = undefined;
-    for (let attach of attachments){
-      if (attach.id == attachment_id){
-        attachment_data = attach.data.base64;
-        break;
+    let attachment_data = undefined
+    for (const attach of attachments) {
+      if (attach.id == attachment_id) {
+        attachment_data = attach.data.base64
+        break
       }
     }
-    if (!attachment_data){
+    if (!attachment_data) {
       throw new Error(`Could not retrieve attachment data associated with @id ${attachment_id}`)
     }
     return attachment_data
   }
 
-  private verify_attachment_data = (credentialRecord: CredentialExchangeRecord, supplements: Supplements[], attachments: Attachment[]) => {
+  private verify_attachment_data = (
+    credentialRecord: CredentialExchangeRecord,
+    supplements: Supplements[],
+    attachments: Attachment[]
+  ) => {
     const supplement_info = this.retrieve_supplement_info(supplements)
-    for (let supp of supplement_info){
-      const hashlink = this.retrieve_hashlink(credentialRecord, supp["attrib_name"])
-      const attachment_data = this.retrieve_attachment_data(attachments, supp["supplement_ref"])
-      const calculated_hashlink = HashlinkEncoder.encode(TypedArrayEncoder.fromBase64(attachment_data), 'sha2-256', 'base58btc')
-      if (hashlink == calculated_hashlink){
-        console.log("Supplements verified")
+    for (const supp of supplement_info) {
+      const hashlink = this.retrieve_hashlink(credentialRecord, supp['attrib_name'])
+      const attachment_data = this.retrieve_attachment_data(attachments, supp['supplement_ref'])
+      const calculated_hashlink = HashlinkEncoder.encode(
+        TypedArrayEncoder.fromBase64(attachment_data),
+        'sha2-256',
+        'base58btc'
+      )
+      if (hashlink == calculated_hashlink) {
         return true
       } else {
-        throw new Error("Attachment data could not be verified")
+        throw new Error('Attachment data could not be verified')
       }
     }
   }
@@ -192,10 +198,15 @@ export class IndyCredentialFormatService extends CredentialFormatService<IndyCre
     return { format, attachment, previewAttributes }
   }
 
-  public async processProposal({ credentialRecord, attachment, supplements, attachments }: FormatProcessOptions): Promise<void> {
+  public async processProposal({
+    credentialRecord,
+    attachment,
+    supplements,
+    attachments,
+  }: FormatProcessOptions): Promise<void> {
     const credProposalJson = attachment.getDataAsJson()
 
-    if (supplements !== undefined && attachments !== undefined){
+    if (supplements !== undefined && attachments !== undefined) {
       this.verify_attachment_data(credentialRecord, supplements, attachments)
     }
     if (!credProposalJson) {
@@ -273,7 +284,7 @@ export class IndyCredentialFormatService extends CredentialFormatService<IndyCre
   public async processOffer({ attachment, credentialRecord, supplements, attachments }: FormatProcessOptions) {
     this.logger.debug(`Processing indy credential offer for credential record ${credentialRecord.id}`)
 
-    if (supplements !== undefined && attachments !== undefined){
+    if (supplements !== undefined && attachments !== undefined) {
       this.verify_attachment_data(credentialRecord, supplements, attachments)
     }
 
@@ -383,10 +394,15 @@ export class IndyCredentialFormatService extends CredentialFormatService<IndyCre
    * @param options the issue credential message wrapped inside this object
    * @param credentialRecord the credential exchange record for this credential
    */
-  public async processCredential({ credentialRecord, attachment, supplements, attachments }: FormatProcessOptions): Promise<void> {
+  public async processCredential({
+    credentialRecord,
+    attachment,
+    supplements,
+    attachments,
+  }: FormatProcessOptions): Promise<void> {
     const credentialRequestMetadata = credentialRecord.metadata.get(CredentialMetadataKeys.IndyRequest)
 
-    if (supplements !== undefined && attachments !== undefined){
+    if (supplements !== undefined && attachments !== undefined) {
       this.verify_attachment_data(credentialRecord, supplements, attachments)
     }
 

@@ -17,8 +17,10 @@ import { IndyIssuerService } from '../../indy/services/IndyIssuerService'
 
 import { IndyPoolService } from './IndyPoolService'
 
+import { CredentialDefinitionTemplate, IndyEndpointAttrib, LedgerServiceInterface, ParseRevocationRegistryDefinitionTemplate, ParseRevocationRegistryDeltaTemplate, ParseRevocationRegistryTemplate, SchemaTemplate } from './LedgerServiceInterface'
+
 @injectable()
-export class IndyLedgerService {
+export class IndyLedgerService extends LedgerServiceInterface{
   private indy: typeof Indy
   private logger: Logger
 
@@ -31,6 +33,7 @@ export class IndyLedgerService {
     indyIssuer: IndyIssuerService,
     indyPoolService: IndyPoolService
   ) {
+    super()
     this.indy = agentDependencies.indy
     this.logger = logger
     this.indyIssuer = indyIssuer
@@ -467,37 +470,4 @@ export class IndyLedgerService {
   }
 }
 
-export interface SchemaTemplate {
-  name: string
-  version: string
-  attributes: string[]
-}
 
-export interface CredentialDefinitionTemplate {
-  schema: Schema
-  tag: string
-  signatureType: 'CL'
-  supportRevocation: boolean
-}
-
-export interface ParseRevocationRegistryDefinitionTemplate {
-  revocationRegistryDefinition: Indy.RevocRegDef
-  revocationRegistryDefinitionTxnTime: number
-}
-
-export interface ParseRevocationRegistryDeltaTemplate {
-  revocationRegistryDelta: Indy.RevocRegDelta
-  deltaTimestamp: number
-}
-
-export interface ParseRevocationRegistryTemplate {
-  revocationRegistry: Indy.RevocReg
-  ledgerTimestamp: number
-}
-
-export interface IndyEndpointAttrib {
-  endpoint?: string
-  types?: Array<'endpoint' | 'did-communication' | 'DIDComm'>
-  routingKeys?: string[]
-  [key: string]: unknown
-}

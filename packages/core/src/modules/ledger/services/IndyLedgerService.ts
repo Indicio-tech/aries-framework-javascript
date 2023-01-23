@@ -17,10 +17,18 @@ import { IndyIssuerService } from '../../indy/services/IndyIssuerService'
 
 import { IndyPoolService } from './IndyPoolService'
 
-import { CredentialDefinitionTemplate, IndyEndpointAttrib, LedgerServiceInterface, ParseRevocationRegistryDefinitionTemplate, ParseRevocationRegistryDeltaTemplate, ParseRevocationRegistryTemplate, SchemaTemplate } from './LedgerServiceInterface'
+import {
+  CredentialDefinitionTemplate,
+  IndyEndpointAttrib,
+  LedgerServiceInterface,
+  ParseRevocationRegistryDefinitionTemplate,
+  ParseRevocationRegistryDeltaTemplate,
+  ParseRevocationRegistryTemplate,
+  SchemaTemplate,
+} from './LedgerServiceInterface'
 
 @injectable()
-export class IndyLedgerService extends LedgerServiceInterface{
+export class IndyLedgerService extends LedgerServiceInterface {
   private indy: typeof Indy
   private logger: Logger
 
@@ -469,5 +477,3 @@ export class IndyLedgerService extends LedgerServiceInterface{
     }
   }
 }
-
-

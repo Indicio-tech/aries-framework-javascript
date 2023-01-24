@@ -1,5 +1,13 @@
 import type { AgentContext } from '../../../agent'
 import type { IndyPoolConfig } from '../IndyPool'
+import type {
+  CredentialDefinitionTemplate,
+  IndyEndpointAttrib,
+  ParseRevocationRegistryDefinitionTemplate,
+  ParseRevocationRegistryDeltaTemplate,
+  ParseRevocationRegistryTemplate,
+  SchemaTemplate,
+} from './LedgerServiceInterface'
 import type { CredDef, default as Indy, NymRole, Schema } from 'indy-sdk'
 
 import { AgentDependencies } from '../../../agent/AgentDependencies'
@@ -16,16 +24,7 @@ import { isIndyError } from '../../../utils/indyError'
 import { IndyIssuerService } from '../../indy/services/IndyIssuerService'
 
 import { IndyPoolService } from './IndyPoolService'
-
-import {
-  CredentialDefinitionTemplate,
-  IndyEndpointAttrib,
-  LedgerServiceInterface,
-  ParseRevocationRegistryDefinitionTemplate,
-  ParseRevocationRegistryDeltaTemplate,
-  ParseRevocationRegistryTemplate,
-  SchemaTemplate,
-} from './LedgerServiceInterface'
+import { LedgerServiceInterface } from './LedgerServiceInterface'
 
 @injectable()
 export class IndyLedgerService extends LedgerServiceInterface {

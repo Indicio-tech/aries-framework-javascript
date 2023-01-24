@@ -3,7 +3,7 @@ import type { IndyPoolConfig } from '../IndyPool'
 import type { CredDef, default as Indy, Schema } from 'indy-sdk'
 
 export abstract class LedgerServiceInterface {
-  abstract setPools(poolsConfigs: IndyPoolConfig[] | string[]): void
+  abstract setPools(poolsConfigs: IndyPoolConfig[] | vdrPool[]): void
 
   abstract registerSchema(agent: AgentContext, did: string, schemaTemplate: SchemaTemplate): Promise<Schema>
 
@@ -69,4 +69,9 @@ export interface IndyEndpointAttrib {
   types?: Array<'endpoint' | 'did-communication' | 'DIDComm'>
   routingKeys?: string[]
   [key: string]: unknown
+}
+
+export interface vdrPool {
+  id: string
+  url: string
 }

@@ -1,3 +1,4 @@
+import type { vdrPool } from '../../../../../indy-vdr-proxy'
 import type { AgentContext } from '../../../agent'
 import type { IndyPoolConfig } from '../IndyPool'
 import type { CredDef, default as Indy, Schema } from 'indy-sdk'
@@ -69,9 +70,4 @@ export interface IndyEndpointAttrib {
   types?: Array<'endpoint' | 'did-communication' | 'DIDComm'>
   routingKeys?: string[]
   [key: string]: unknown
-}
-
-export interface vdrPool {
-  id: string
-  url: string
 }

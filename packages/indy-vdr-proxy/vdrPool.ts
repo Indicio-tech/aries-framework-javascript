@@ -10,6 +10,7 @@ import { isLedgerRejectResponse, isLedgerReqnackResponse } from '../indy-sdk/src
 export interface vdrPoolConfig {
   id: string
   url: string
+  isProduction: boolean
 }
 
 export class vdrPool {
@@ -30,6 +31,10 @@ export class vdrPool {
 
   public get url() {
     return this.poolConfig.url
+  }
+
+  public get config(): vdrPoolConfig {
+    return this.config
   }
 
   private async submitRequest(request: Indy.LedgerRequest) {
@@ -63,4 +68,10 @@ export class vdrPool {
 
     return response as Indy.LedgerReadReplyResponse
   }
+}
+
+export interface PublicDidRequestVDR {
+  did: Indy.GetNymResponse
+  pool: vdrPool
+  response: Indy.LedgerReadReplyResponse
 }

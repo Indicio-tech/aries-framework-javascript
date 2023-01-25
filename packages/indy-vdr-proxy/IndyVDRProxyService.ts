@@ -6,7 +6,7 @@ import type {
   ParseRevocationRegistryTemplate,
   SchemaTemplate,
 } from '../core/src/modules/ledger/services/LedgerServiceInterface'
-import type { vdrPool } from './vdrPool'
+import type { PublicDidRequestVDR, vdrPool } from './vdrPool'
 import type { CachedDidResponse } from '@aries-framework/core'
 import type { default as Indy, CredDef, Schema } from 'indy-sdk'
 import type fetch from 'node-fetch'
@@ -14,13 +14,13 @@ import type fetch from 'node-fetch'
 import { AgentDependencies } from '../core/src/agent/AgentDependencies'
 import { InjectionSymbols } from '../core/src/constants'
 import { Logger } from '../core/src/logger'
-import { LedgerNotConfiguredError } from '../core/src/modules/ledger/error'
+import { LedgerError, LedgerNotConfiguredError } from '../core/src/modules/ledger/error'
 import { LedgerNotFoundError } from '../core/src/modules/ledger/error/LedgerNotFoundError'
 import { LedgerServiceInterface } from '../core/src/modules/ledger/services/LedgerServiceInterface'
 import { injectable, inject } from '../core/src/plugins'
-import { didFromSchemaId } from '../core/src/utils/did'
+import { didFromSchemaId, isSelfCertifiedDid } from '../core/src/utils/did'
 import { isIndyError } from '../core/src/utils/indyError'
-import { allSettled } from '../core/src/utils/promises'
+import { allSettled, onlyFulfilled, onlyRejected } from '../core/src/utils/promises'
 import { IndySdkError } from '../indy-sdk/src/error/IndySdkError'
 
 import { CacheModuleConfig } from '@aries-framework/core'
@@ -124,23 +124,77 @@ export class IndyVDRProxyService extends LedgerServiceInterface {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { successful, rejected } = await this.getSettledDidResponsesFromPools(did, pools)
 
-    throw new Error('Method not implemented.')
+    if (successful.length === 0) {
+      const allNotFound = rejected.every((e) => e.reason instanceof LedgerNotFoundError)
+      const rejectedOtherThanNotFound = rejected.filter((e) => !(e.reason instanceof LedgerNotFoundError))
+
+      // All ledgers returned response that the did was not found
+      if (allNotFound) {
+        throw new LedgerNotFoundError(`Did '${did}' not found on any of the ledgers (total ${this.pools.length}).`)
+      }
+
+      // one or more of the ledgers returned an unknown error
+      throw new LedgerError(
+        `Unknown error retrieving did '${did}' from '${rejectedOtherThanNotFound.length}' of '${pools.length}' ledgers`,
+        { cause: rejectedOtherThanNotFound[0].reason }
+      )
+    }
+
+    // If there are self certified DIDs we always prefer it over non self certified DIDs
+    // We take the first self certifying DID as we take the order in the
+    // indyLedgers config as the order of preference of ledgers
+    let value = successful.find((response) =>
+      isSelfCertifiedDid(response.value.did.did, response.value.did.verkey)
+    )?.value
+
+    if (!value) {
+      // Split between production and nonProduction ledgers. If there is at least one
+      // successful response from a production ledger, only keep production ledgers
+      // otherwise we only keep the non production ledgers.
+      const production = successful.filter((s) => s.value.pool.config.isProduction)
+      const nonProduction = successful.filter((s) => !s.value.pool.config.isProduction)
+      const productionOrNonProduction = production.length >= 1 ? production : nonProduction
+
+      // We take the first value as we take the order in the indyLedgers config as
+      // the order of preference of ledgers
+      value = productionOrNonProduction[0].value
+    }
+
+    await cache.set(agentContext, `IndySdkPoolService:${did}`, {
+      nymResponse: value.did,
+      poolId: value.pool.id,
+    })
+    return { pool: value.pool, did: value.did }
   }
 
-  private getSettledDidResponsesFromPools(did: string, pools: vdrPool[]) {
+  private async getSettledDidResponsesFromPools(did: string, pools: vdrPool[]) {
     this.logger.trace(`Retrieving did '${did}' from ${pools.length} ledgers`)
-    //const didResponses = await allSettled(pools.map((pool) => ))
-    return { successful: null, rejected: null }
+    const didResponses = await allSettled(pools.map((pool) => this.getDidFromPool(did, pool)))
+
+    const successful = onlyFulfilled(didResponses)
+    this.logger.trace(`Retrieved ${successful.length} responses from ledgers for did '${did}'`)
+
+    const rejected = onlyRejected(didResponses)
+
+    return { successful: successful, rejected: rejected }
   }
 
-  private async getDidFromPool(did: string, pool: vdrPool): Promise<null> {
+  private async getDidFromPool(did: string, pool: vdrPool): Promise<PublicDidRequestVDR> {
     try {
       this.logger.trace(`Get public did '${did}' from ledger '${pool.id}'`)
       const request = await this.indy.buildGetNymRequest(null, did)
 
       this.logger.trace(`Submitting get did request for did'${did}' to ledger '${pool.id}'`)
       const response = await pool.submitReadRequest(request)
-      return null
+
+      const result = await this.indy.parseGetNymResponse(response)
+      this.logger.trace(`Retieved did '${did}' from ledger '${pool.id}'`, result)
+
+      return {
+        did: result,
+        pool,
+        response,
+      }
     } catch (error) {
       this.logger.trace(`Error retrieving did '${did}' from ledger '${pool.id}'`, {
         error,

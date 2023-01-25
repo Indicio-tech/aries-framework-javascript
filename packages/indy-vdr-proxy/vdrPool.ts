@@ -38,7 +38,7 @@ export class vdrPool {
   }
 
   private async submitRequest(request: Indy.LedgerRequest) {
-    const response: Response = await this.fetch(this.poolConfig.url, {
+    const response: Response = await this.fetch(this.poolConfig.url + '/submit', {
       method: 'POST',
       headers: {
         Accept: 'application/json',

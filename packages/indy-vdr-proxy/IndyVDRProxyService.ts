@@ -121,7 +121,6 @@ export class IndyVDRProxyService extends LedgerServiceInterface {
       return { did: cachedNymResponse.nymResponse, pool }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { successful, rejected } = await this.getSettledDidResponsesFromPools(did, pools)
 
     if (successful.length === 0) {

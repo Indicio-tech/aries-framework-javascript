@@ -1,12 +1,12 @@
-import type { LedgerModuleConfigOptions } from './LedgerModuleConfig'
 import type { DependencyManager, Module } from '../../plugins'
+import type { LedgerModuleConfigOptions } from './LedgerModuleConfig'
 
 import { AnonCredsCredentialDefinitionRepository } from '../indy/repository/AnonCredsCredentialDefinitionRepository'
 import { AnonCredsSchemaRepository } from '../indy/repository/AnonCredsSchemaRepository'
 
 import { LedgerApi } from './LedgerApi'
 import { LedgerModuleConfig } from './LedgerModuleConfig'
-import { IndyLedgerService, IndyPoolService } from './services'
+import { IndyPoolService, IndyLedgerService } from './services'
 
 export class LedgerModule implements Module {
   public readonly config: LedgerModuleConfig

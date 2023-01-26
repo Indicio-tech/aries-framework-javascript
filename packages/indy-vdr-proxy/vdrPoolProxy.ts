@@ -15,7 +15,7 @@ export interface vdrPoolConfig {
   indyNamespace: DidIndyNamespace
 }
 
-export class vdrPool {
+export class vdrPoolProxy {
   private poolConfig: vdrPoolConfig
   private indy: typeof Indy
   private fetch: typeof fetch
@@ -78,6 +78,6 @@ export class vdrPool {
 
 export interface PublicDidRequestVDR {
   did: Indy.GetNymResponse
-  pool: vdrPool
+  pool: vdrPoolProxy
   response: Indy.LedgerReadReplyResponse
 }

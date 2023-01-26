@@ -7,7 +7,7 @@ import type {
   ParseRevocationRegistryDeltaTemplate,
   ParseRevocationRegistryTemplate,
   SchemaTemplate,
-} from './LedgerServiceInterface'
+} from './LedgerService'
 import type { CredDef, default as Indy, NymRole, Schema } from 'indy-sdk'
 
 import { AgentDependencies } from '../../../agent/AgentDependencies'
@@ -24,10 +24,10 @@ import { isIndyError } from '../../../utils/indyError'
 import { IndyIssuerService } from '../../indy/services/IndyIssuerService'
 
 import { IndyPoolService } from './IndyPoolService'
-import { LedgerServiceInterface } from './LedgerServiceInterface'
+import { LedgerService } from './LedgerService'
 
 @injectable()
-export class IndyLedgerService extends LedgerServiceInterface {
+export class IndyLedgerService extends LedgerService {
   private indy: typeof Indy
   private logger: Logger
 

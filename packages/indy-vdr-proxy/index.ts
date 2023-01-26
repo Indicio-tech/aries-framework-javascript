@@ -1,2 +1,2 @@
 export * from './IndyVDRProxyService'
-export * from './vdrPool'
+export * from './vdrPoolProxy'

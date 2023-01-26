@@ -1,10 +1,10 @@
-import type { vdrPool } from '../../../../../indy-vdr-proxy'
+import type { vdrPoolProxy } from '../../../../../indy-vdr-proxy'
 import type { AgentContext } from '../../../agent'
 import type { IndyPoolConfig } from '../IndyPool'
 import type { CredDef, default as Indy, Schema } from 'indy-sdk'
 
-export abstract class LedgerServiceInterface {
-  abstract setPools(poolsConfigs: IndyPoolConfig[] | vdrPool[]): void
+export abstract class LedgerService {
+  abstract setPools(poolsConfigs: IndyPoolConfig[] | vdrPoolProxy[]): void
 
   abstract registerSchema(agent: AgentContext, did: string, schemaTemplate: SchemaTemplate): Promise<Schema>
 

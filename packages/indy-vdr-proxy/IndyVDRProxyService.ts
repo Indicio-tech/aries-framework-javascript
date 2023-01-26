@@ -18,7 +18,12 @@ import { LedgerError, LedgerNotConfiguredError } from '../core/src/modules/ledge
 import { LedgerNotFoundError } from '../core/src/modules/ledger/error/LedgerNotFoundError'
 import { LedgerServiceInterface } from '../core/src/modules/ledger/services/LedgerServiceInterface'
 import { injectable, inject } from '../core/src/plugins'
-import { didFromSchemaId, isSelfCertifiedDid } from '../core/src/utils/did'
+import {
+  didFromSchemaId,
+  isSelfCertifiedDid,
+  didFromCredentialDefinitionId,
+  didFromRevocationRegistryDefinitionId,
+} from '../core/src/utils/did'
 import { isIndyError } from '../core/src/utils/indyError'
 import { allSettled, onlyFulfilled, onlyRejected } from '../core/src/utils/promises'
 import { IndySdkError } from '../indy-sdk/src/error/IndySdkError'
@@ -57,8 +62,35 @@ export class IndyVDRProxyService extends LedgerServiceInterface {
     throw new Error('Write Request are not supported by the VDR Proxy service.')
   }
   public async getSchema(agentContext: AgentContext, schemaId: string): Promise<Schema> {
-    const pool = await this.getPoolForDid(agentContext, didFromSchemaId(schemaId))
-    return this.getSchemaSingle(agentContext, schemaId, pool.pool.url)
+    const did = didFromSchemaId(schemaId)
+    const { pool } = await this.getPoolForDid(agentContext, did)
+
+    try {
+      this.logger.debug(`Getting schema '${schemaId}' from ledger '${pool.id}'`)
+
+      const request = await this.indy.buildGetSchemaRequest(null, schemaId)
+
+      this.logger.trace(`Submitting get schema request for schema '${schemaId}' to ledger '${pool.id}'`)
+      const response = await pool.submitReadRequest(request)
+
+      this.logger.trace(`Got un-parsed schema '${schemaId}' from ledger '${pool.id}'`, {
+        response,
+      })
+
+      const [, schema] = await this.indy.parseGetSchemaResponse(response)
+      this.logger.debug(`Got schema '${schemaId}' from ledger '${pool.id}'`, {
+        schema,
+      })
+
+      return schema
+    } catch (error) {
+      this.logger.error(`Error retrieving schema '${schemaId}' from ledger '${pool.id}'`, {
+        error,
+        schemaId,
+      })
+
+      throw isIndyError(error) ? new IndySdkError(error) : error
+    }
   }
   public registerCredentialDefinition(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -70,33 +102,190 @@ export class IndyVDRProxyService extends LedgerServiceInterface {
   ): Promise<CredDef> {
     throw new Error('Write Request are not supported by the VDR Proxy service.')
   }
-  public getCredentialDefinition(agentContext: AgentContext, credentialDefinitionId: string): Promise<CredDef> {
-    throw new Error('Method not implemented.')
+  public async getCredentialDefinition(agentContext: AgentContext, credentialDefinitionId: string): Promise<CredDef> {
+    const did = didFromCredentialDefinitionId(credentialDefinitionId)
+    const { pool } = await this.getPoolForDid(agentContext, did)
+
+    this.logger.debug(`Using ledger '${pool.id}' to retrieve credential definition '${credentialDefinitionId}'`)
+
+    try {
+      const request = await this.indy.buildGetCredDefRequest(null, credentialDefinitionId)
+
+      this.logger.trace(
+        `Submitting get credential definition request for credential definition '${credentialDefinitionId}' to leder '${pool.id}'`
+      )
+
+      const response = await pool.submitReadRequest(request)
+      this.logger.trace(
+        `Got un-parsed credential definition '${credentialDefinitionId}' from ledger '${pool.id}`,
+        response
+      )
+
+      const [, credentialDefinition] = await this.indy.parseGetCredDefResponse(response)
+      this.logger.debug(`Got credential definition '${credentialDefinitionId}' from ledger '${pool.id}'`, {
+        credentialDefinition,
+      })
+
+      return credentialDefinition
+    } catch (error) {
+      this.logger.error(`Error retrieving credential definition '${credentialDefinitionId}' from ledger '${pool.id}'`, {
+        error,
+        credentialDefinitionId,
+        pool: pool.id,
+      })
+
+      throw isIndyError(error) ? new IndySdkError(error) : error
+    }
   }
-  public getRevocationRegistryDefinition(
+
+  public async getRevocationRegistryDefinition(
     agentContext: AgentContext,
     revocationRegistryDefinitionId: string
   ): Promise<ParseRevocationRegistryDefinitionTemplate> {
-    throw new Error('Method not implemented.')
+    const did = didFromRevocationRegistryDefinitionId(revocationRegistryDefinitionId)
+    const { pool } = await this.getPoolForDid(agentContext, did)
+
+    this.logger.debug(
+      `Using ledger '${pool.id}' to retrieve revocation registry definition '${revocationRegistryDefinitionId}'`
+    )
+    try {
+      //TODO - implement a cache
+      this.logger.trace(
+        `Revocation Registry Definition '${revocationRegistryDefinitionId}' not cached, retrieving from ledger`
+      )
+
+      const request = await this.indy.buildGetRevocRegDefRequest(null, revocationRegistryDefinitionId)
+
+      this.logger.trace(
+        `Submitting get revocation registry definition request for revocation registry definition '${revocationRegistryDefinitionId}' to ledger`
+      )
+      const response = await pool.submitReadRequest(request)
+      this.logger.trace(
+        `Got un-parsed revocation registry definition '${revocationRegistryDefinitionId}' from ledger '${pool.id}'`,
+        {
+          response,
+        }
+      )
+
+      const [, revocationRegistryDefinition] = await this.indy.parseGetRevocRegDefResponse(response)
+
+      this.logger.debug(`Got revocation registry definition '${revocationRegistryDefinitionId}' from ledger`, {
+        revocationRegistryDefinition,
+      })
+
+      return { revocationRegistryDefinition, revocationRegistryDefinitionTxnTime: response.result.txnTime }
+    } catch (error) {
+      this.logger.error(
+        `Error retrieving revocation registry definition '${revocationRegistryDefinitionId}' from ledger`,
+        {
+          error,
+          revocationRegistryDefinitionId: revocationRegistryDefinitionId,
+          pool: pool.id,
+        }
+      )
+      throw error
+    }
   }
-  public getRevocationRegistryDelta(
+  public async getRevocationRegistryDelta(
     agentContext: AgentContext,
     revocationRegistryDefinitionId: string,
     to: number,
     from: number
   ): Promise<ParseRevocationRegistryDeltaTemplate> {
-    throw new Error('Method not implemented.')
+    //TODO - implement a cache
+    const did = didFromRevocationRegistryDefinitionId(revocationRegistryDefinitionId)
+    const { pool } = await this.getPoolForDid(agentContext, did)
+
+    this.logger.debug(
+      `Using ledger '${pool.id}' to retrieve revocation registry delta with revocation registry definition id: '${revocationRegistryDefinitionId}'`,
+      {
+        to,
+        from,
+      }
+    )
+
+    try {
+      const request = await this.indy.buildGetRevocRegDeltaRequest(null, revocationRegistryDefinitionId, from, to)
+
+      this.logger.trace(
+        `Submitting get revocation registry delta request for revocation registry '${revocationRegistryDefinitionId}' to ledger`
+      )
+
+      const response = await pool.submitReadRequest(request)
+      this.logger.trace(
+        `Got revocation registry delta unparsed-response '${revocationRegistryDefinitionId}' from ledger`,
+        {
+          response,
+        }
+      )
+
+      const [, revocationRegistryDelta, deltaTimestamp] = await this.indy.parseGetRevocRegDeltaResponse(response)
+
+      this.logger.debug(`Got revocation registry delta '${revocationRegistryDefinitionId}' from ledger`, {
+        revocationRegistryDelta,
+        deltaTimestamp,
+        to,
+        from,
+      })
+
+      return { revocationRegistryDelta, deltaTimestamp }
+    } catch (error) {
+      this.logger.error(
+        `Error retrieving revocation registry delta '${revocationRegistryDefinitionId}' from ledger, potentially revocation interval ends before revocation registry creation?"`,
+        {
+          error,
+          revocationRegistryId: revocationRegistryDefinitionId,
+          pool: pool.id,
+        }
+      )
+      throw error
+    }
   }
-  public getRevocationRegistry(
+  public async getRevocationRegistry(
     agentContext: AgentContext,
     revocationRegistryDefinitionId: string,
     timestamp: number
   ): Promise<ParseRevocationRegistryTemplate> {
-    throw new Error('Method not implemented.')
-  }
+    //TODO - implement a cache
+    const did = didFromRevocationRegistryDefinitionId(revocationRegistryDefinitionId)
+    const { pool } = await this.getPoolForDid(agentContext, did)
 
-  private getSchemaSingle(agentContext: AgentContext, schemaId: string, pool: string): Promise<Schema> {
-    throw new Error('Method not implemented.')
+    this.logger.debug(
+      `Using ledger '${pool.id}' to retrieve revocation registry accumulated state with revocation registry definition id: '${revocationRegistryDefinitionId}'`,
+      {
+        timestamp,
+      }
+    )
+
+    try {
+      const request = await this.indy.buildGetRevocRegRequest(null, revocationRegistryDefinitionId, timestamp)
+
+      this.logger.trace(
+        `Submitting get revocation registry request for revocation registry '${revocationRegistryDefinitionId}' to ledger`
+      )
+      const response = await pool.submitReadRequest(request)
+      this.logger.trace(
+        `Got un-parsed revocation registry '${revocationRegistryDefinitionId}' from ledger '${pool.id}'`,
+        {
+          response,
+        }
+      )
+
+      const [, revocationRegistry, ledgerTimestamp] = await this.indy.parseGetRevocRegResponse(response)
+      this.logger.debug(`Got revocation registry '${revocationRegistryDefinitionId}' from ledger`, {
+        ledgerTimestamp,
+        revocationRegistry,
+      })
+
+      return { revocationRegistry, ledgerTimestamp }
+    } catch (error) {
+      this.logger.error(`Error retrieving revocation registry '${revocationRegistryDefinitionId}' from ledger`, {
+        error,
+        revocationRegistryId: revocationRegistryDefinitionId,
+        pool: pool.id,
+      })
+      throw error
+    }
   }
 
   public async getPoolForDid(

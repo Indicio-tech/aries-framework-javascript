@@ -43,7 +43,7 @@ export class vdrPool {
     return this.config.indyNamespace
   }
 
-  private async submitRequest(request: Indy.LedgerRequest) {
+  public async submitRequest(request: Indy.LedgerRequest) {
     const response: Response = await this.fetch(this.poolConfig.url + '/submit', {
       method: 'POST',
       headers: {
@@ -51,6 +51,17 @@ export class vdrPool {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(request),
+    })
+    return JSON.parse(await response.json()) as Indy.LedgerResponse
+  }
+
+  public async submitShortcutRequest(endpoint: string) {
+    const response: Response = await this.fetch(this.poolConfig.url + endpoint, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
     })
     return JSON.parse(await response.json()) as Indy.LedgerResponse
   }

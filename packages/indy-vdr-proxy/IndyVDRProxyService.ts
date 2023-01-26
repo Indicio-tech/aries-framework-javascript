@@ -359,6 +359,48 @@ export class IndyVDRProxyService extends LedgerServiceInterface {
     }
   }
 
+  //VDR specfic functions
+
+  public async getGenesis(poolId: string) {
+    const pool = this.pools.find((pool) => pool.id === poolId)
+    if (pool) {
+      const response = await pool.submitShortcutRequest('/genesis')
+      return response
+    } else {
+      throw new LedgerNotFoundError(`The ledger with id:'${poolId}' was not found in the pools`)
+    }
+  }
+
+  public async getTaa(poolId: string) {
+    const pool = this.pools.find((pool) => pool.id === poolId)
+    if (pool) {
+      const response = await pool.submitShortcutRequest('/taa')
+      return response
+    } else {
+      throw new LedgerNotFoundError(`The ledger with id:'${poolId}' was not found in the pools`)
+    }
+  }
+
+  public async getAml(poolId: string) {
+    const pool = this.pools.find((pool) => pool.id === poolId)
+    if (pool) {
+      const response = await pool.submitShortcutRequest('/aml')
+      return response
+    } else {
+      throw new LedgerNotFoundError(`The ledger with id:'${poolId}' was not found in the pools`)
+    }
+  }
+
+  public async getNym(poolId: string, did: string) {
+    const pool = this.pools.find((pool) => pool.id === poolId)
+    if (pool) {
+      const response = await pool.submitShortcutRequest(`/nym/${did}`)
+      return response
+    } else {
+      throw new LedgerNotFoundError(`The ledger with id:'${poolId}' was not found in the pools`)
+    }
+  }
+
   public async getPoolForDid(
     agentContext: AgentContext,
     did: string

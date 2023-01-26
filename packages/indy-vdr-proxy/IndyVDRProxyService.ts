@@ -9,11 +9,11 @@ import type {
 import type { PublicDidRequestVDR, vdrPool } from './vdrPool'
 import type { CachedDidResponse } from '@aries-framework/core'
 import type { default as Indy, CredDef, Schema } from 'indy-sdk'
-import type fetch from 'node-fetch'
 
 import { AgentDependencies } from '../core/src/agent/AgentDependencies'
 import { InjectionSymbols } from '../core/src/constants'
 import { Logger } from '../core/src/logger'
+import { IndyIssuerService } from '../core/src/modules/indy'
 import { LedgerError, LedgerNotConfiguredError } from '../core/src/modules/ledger/error'
 import { LedgerNotFoundError } from '../core/src/modules/ledger/error/LedgerNotFoundError'
 import { LedgerServiceInterface } from '../core/src/modules/ledger/services/LedgerServiceInterface'
@@ -35,21 +35,22 @@ export class IndyVDRProxyService extends LedgerServiceInterface {
   private indy: typeof Indy
   private logger: Logger
   private pools: vdrPool[]
-  private fetch: typeof fetch
+  private indyIssuer: IndyIssuerService
 
   public constructor(
     @inject(InjectionSymbols.AgentDependencies) agentDependencies: AgentDependencies,
     @inject(InjectionSymbols.Logger) logger: Logger,
+    indyIssuer: IndyIssuerService,
     pools: vdrPool[]
   ) {
     super()
     this.indy = agentDependencies.indy
     this.logger = logger
+    this.indyIssuer = indyIssuer
     this.pools = pools
-    this.fetch = agentDependencies.fetch
   }
 
-  public setPools(poolsConfigs: vdrPool[]): void {
+  public setPools(poolsConfigs: vdrPool[]) {
     this.pools = poolsConfigs
   }
 
@@ -57,10 +58,40 @@ export class IndyVDRProxyService extends LedgerServiceInterface {
     this.pools = [...this.pools, ...node]
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public registerSchema(agent: AgentContext, did: string, schemaTemplate: SchemaTemplate): Promise<Schema> {
-    throw new Error('Write Request are not supported by the VDR Proxy service.')
+  public async registerSchema(
+    agentContext: AgentContext,
+    did: string,
+    schemaTemplate: SchemaTemplate
+  ): Promise<Schema> {
+    const pool = this.getPoolForNamespace()
+
+    try {
+      this.logger.debug(`Register schema on ledger '${pool.id}' with did '${did}'`, schemaTemplate)
+      const { name, attributes, version } = schemaTemplate
+      const schema = await this.indyIssuer.createSchema(agentContext, { originDid: did, name, version, attributes })
+
+      const request = await this.indy.buildSchemaRequest(did, schema)
+
+      const response = await pool.submitWriteRequest(request)
+      this.logger.debug(`Registered schema '${schema.id}' on ledger '${pool.id}'`, {
+        response,
+        schema,
+      })
+
+      schema.seqNo = response.result.txnMetadata.seqNo
+
+      return schema
+    } catch (error) {
+      this.logger.error(`Error registering schema for did '${did}' on ledger '${pool.id}'`, {
+        error,
+        did,
+        schemaTemplate,
+      })
+
+      throw isIndyError(error) ? new IndySdkError(error) : error
+    }
   }
+
   public async getSchema(agentContext: AgentContext, schemaId: string): Promise<Schema> {
     const did = didFromSchemaId(schemaId)
     const { pool } = await this.getPoolForDid(agentContext, did)
@@ -92,16 +123,54 @@ export class IndyVDRProxyService extends LedgerServiceInterface {
       throw isIndyError(error) ? new IndySdkError(error) : error
     }
   }
-  public registerCredentialDefinition(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public async registerCredentialDefinition(
     agentContext: AgentContext,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     did: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    createCredentialDefinition: CredentialDefinitionTemplate
+
+    credentialDefinitionTemplate: CredentialDefinitionTemplate
   ): Promise<CredDef> {
-    throw new Error('Write Request are not supported by the VDR Proxy service.')
+    const pool = this.getPoolForNamespace()
+
+    try {
+      this.logger.debug(
+        `Registering credential definition on ledger '${pool.id}' with did '${did}'`,
+        credentialDefinitionTemplate
+      )
+      const { schema, tag, signatureType, supportRevocation } = credentialDefinitionTemplate
+
+      const credentialDefinition = await this.indyIssuer.createCredentialDefinition(agentContext, {
+        issuerDid: did,
+        schema,
+        tag,
+        signatureType,
+        supportRevocation,
+      })
+
+      const request = await this.indy.buildCredDefRequest(did, credentialDefinition)
+
+      const response = await pool.submitWriteRequest(request)
+
+      this.logger.debug(`Registered credential definition '${credentialDefinition.id}' on ledger '${pool.id}'`, {
+        response,
+        credentialDefinition: credentialDefinition,
+      })
+
+      return credentialDefinition
+    } catch (error) {
+      this.logger.error(
+        `Error registering credential definition for schema '${credentialDefinitionTemplate.schema.id}' on ledger '${pool.id}'`,
+        {
+          error,
+          did,
+          credentialDefinitionTemplate,
+        }
+      )
+
+      throw isIndyError(error) ? new IndySdkError(error) : error
+    }
   }
+
   public async getCredentialDefinition(agentContext: AgentContext, credentialDefinitionId: string): Promise<CredDef> {
     const did = didFromCredentialDefinitionId(credentialDefinitionId)
     const { pool } = await this.getPoolForDid(agentContext, did)
@@ -186,6 +255,7 @@ export class IndyVDRProxyService extends LedgerServiceInterface {
       throw error
     }
   }
+
   public async getRevocationRegistryDelta(
     agentContext: AgentContext,
     revocationRegistryDefinitionId: string,
@@ -241,6 +311,7 @@ export class IndyVDRProxyService extends LedgerServiceInterface {
       throw error
     }
   }
+
   public async getRevocationRegistry(
     agentContext: AgentContext,
     revocationRegistryDefinitionId: string,
@@ -394,5 +465,29 @@ export class IndyVDRProxyService extends LedgerServiceInterface {
         throw isIndyError(error) ? new IndySdkError(error) : error
       }
     }
+  }
+
+  /**
+   * Get the most appropriate pool for the given indyNamespace
+   */
+  public getPoolForNamespace(indyNamespace?: string) {
+    if (this.pools.length === 0) {
+      throw new LedgerNotConfiguredError(
+        "No indy ledgers configured. Provide at least one pool configuration in the 'indyLedgers' agent configuration"
+      )
+    }
+
+    if (!indyNamespace) {
+      this.logger.warn('Not passing the indyNamespace is deprecated and will be removed in the future version.')
+      return this.pools[0]
+    }
+
+    const pool = this.pools.find((pool) => pool.didIndyNamespace === indyNamespace)
+
+    if (!pool) {
+      throw new LedgerNotFoundError(`No ledgers found for IndyNamespace '${indyNamespace}'.`)
+    }
+
+    return pool
   }
 }

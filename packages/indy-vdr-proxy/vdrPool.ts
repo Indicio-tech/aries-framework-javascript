@@ -1,4 +1,5 @@
 import type { Logger } from '../core/src/logger'
+import type { DidIndyNamespace } from '../core/src/utils'
 import type { AgentDependencies } from '@aries-framework/core'
 import type { default as Indy } from 'indy-sdk'
 import type fetch from 'node-fetch'
@@ -11,6 +12,7 @@ export interface vdrPoolConfig {
   id: string
   url: string
   isProduction: boolean
+  indyNamespace: DidIndyNamespace
 }
 
 export class vdrPool {
@@ -35,6 +37,10 @@ export class vdrPool {
 
   public get config(): vdrPoolConfig {
     return this.config
+  }
+
+  public get didIndyNamespace(): string {
+    return this.config.indyNamespace
   }
 
   private async submitRequest(request: Indy.LedgerRequest) {

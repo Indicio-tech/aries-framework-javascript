@@ -1,3 +1,4 @@
+import type { PublicDidRequestVDR, vdrPoolProxy } from './vdrPoolProxy'
 import type { AgentContext } from '../core/src/agent'
 import type {
   CredentialDefinitionTemplate,
@@ -6,9 +7,10 @@ import type {
   ParseRevocationRegistryTemplate,
   SchemaTemplate,
 } from '../core/src/modules/ledger/services/LedgerService'
-import type { PublicDidRequestVDR, vdrPoolProxy } from './vdrPoolProxy'
 import type { CachedDidResponse } from '@aries-framework/core'
 import type { default as Indy, CredDef, Schema } from 'indy-sdk'
+
+import { CacheModuleConfig } from '@aries-framework/core'
 
 import { AgentDependencies } from '../core/src/agent/AgentDependencies'
 import { InjectionSymbols } from '../core/src/constants'
@@ -27,8 +29,6 @@ import {
 import { isIndyError } from '../core/src/utils/indyError'
 import { allSettled, onlyFulfilled, onlyRejected } from '../core/src/utils/promises'
 import { IndySdkError } from '../indy-sdk/src/error/IndySdkError'
-
-import { CacheModuleConfig } from '@aries-framework/core'
 
 @injectable()
 export class IndyVDRProxyService extends LedgerService {

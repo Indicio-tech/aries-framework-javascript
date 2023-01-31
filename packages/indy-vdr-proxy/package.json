@@ -1,0 +1,32 @@
+{
+  "name": "@aries-framework/indy-vdr-proxy",
+  "main": "build/index",
+  "types": "build/index",
+  "version": "0.0.1",
+  "files": [
+    "build"
+  ],
+  "description": "Service for AFJ core that will allow use of VDR proxy server to make ledger requests",
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://github.com/hyperledger/aries-framework-javascript/tree/main/packages/core",
+  "repository": "https://github.com/hyperledger/aries-framework-javascript",
+  "scripts": {
+    "build": "yarn run clean && yarn run compile",
+    "clean": "rimraf ./build",
+    "compile": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "yarn run build"
+  },
+  "dependencies": {
+    "@aries-framework/core": "../^0.3.3",
+    "@types/express": "^4.17.15",
+    "express": "^4.17.1",
+    "ffi-napi": "^4.0.3",
+    "indy-sdk": "^1.16.0-dev-1636",
+    "node-fetch": "^2.6.1",
+    "ref-napi": "^3.0.3",
+    "ws": "^7.5.3"
+  }
+}

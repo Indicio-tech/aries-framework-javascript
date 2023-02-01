@@ -1,12 +1,12 @@
-import type { Logger } from '../core/src/logger'
-import type { DidIndyNamespace } from '../core/src/utils'
+import type { Logger } from '../../core/src/logger'
+import type { DidIndyNamespace } from '../../core/src/utils'
 import type { AgentDependencies } from '@aries-framework/core'
 import type { default as Indy } from 'indy-sdk'
 import type fetch from 'node-fetch'
 import type { Response } from 'node-fetch'
 
-import { LedgerError } from '../core/src/modules/ledger/error'
-import { isLedgerRejectResponse, isLedgerReqnackResponse } from '../indy-sdk/src/ledger/util'
+import { LedgerError } from '../../core/src/modules/ledger/error'
+import { isLedgerRejectResponse, isLedgerReqnackResponse } from '../../indy-sdk/src/ledger/util'
 
 export interface vdrPoolConfig {
   id: string

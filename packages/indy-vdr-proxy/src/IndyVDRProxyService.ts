@@ -1,34 +1,32 @@
 import type { PublicDidRequestVDR, vdrPoolProxy } from './vdrPoolProxy'
-import type { AgentContext } from '../core/src/agent'
+import type { CachedDidResponse } from '@aries-framework/core'
+import type { AgentContext } from '@aries-framework/core/src/agent'
 import type {
   CredentialDefinitionTemplate,
   ParseRevocationRegistryDefinitionTemplate,
   ParseRevocationRegistryDeltaTemplate,
   ParseRevocationRegistryTemplate,
   SchemaTemplate,
-} from '../core/src/modules/ledger/services/LedgerService'
-import type { CachedDidResponse } from '@aries-framework/core'
+} from '@aries-framework/core/src/modules/ledger/services/LedgerService'
 import type { default as Indy, CredDef, Schema } from 'indy-sdk'
 
-import { CacheModuleConfig } from '@aries-framework/core'
-
-import { AgentDependencies } from '../core/src/agent/AgentDependencies'
-import { InjectionSymbols } from '../core/src/constants'
-import { Logger } from '../core/src/logger'
-import { IndyIssuerService } from '../core/src/modules/indy'
-import { LedgerError, LedgerNotConfiguredError } from '../core/src/modules/ledger/error'
-import { LedgerNotFoundError } from '../core/src/modules/ledger/error/LedgerNotFoundError'
-import { LedgerService } from '../core/src/modules/ledger/services/LedgerService'
-import { injectable, inject } from '../core/src/plugins'
+import { IndySdkError, CacheModuleConfig } from '@aries-framework/core'
+import { AgentDependencies } from '@aries-framework/core/src/agent/AgentDependencies'
+import { InjectionSymbols } from '@aries-framework/core/src/constants'
+import { Logger } from '@aries-framework/core/src/logger'
+import { IndyIssuerService } from '@aries-framework/core/src/modules/indy'
+import { LedgerError, LedgerNotConfiguredError } from '@aries-framework/core/src/modules/ledger/error'
+import { LedgerNotFoundError } from '@aries-framework/core/src/modules/ledger/error/LedgerNotFoundError'
+import { LedgerService } from '@aries-framework/core/src/modules/ledger/services/LedgerService'
+import { injectable, inject } from '@aries-framework/core/src/plugins'
 import {
   didFromSchemaId,
   isSelfCertifiedDid,
   didFromCredentialDefinitionId,
   didFromRevocationRegistryDefinitionId,
-} from '../core/src/utils/did'
-import { isIndyError } from '../core/src/utils/indyError'
-import { allSettled, onlyFulfilled, onlyRejected } from '../core/src/utils/promises'
-import { IndySdkError } from '../indy-sdk/src/error/IndySdkError'
+} from '@aries-framework/core/src/utils/did'
+import { isIndyError } from '@aries-framework/core/src/utils/indyError'
+import { allSettled, onlyFulfilled, onlyRejected } from '@aries-framework/core/src/utils/promises'
 
 @injectable()
 export class IndyVDRProxyService extends LedgerService {

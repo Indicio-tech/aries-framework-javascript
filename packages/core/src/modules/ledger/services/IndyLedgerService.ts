@@ -1,5 +1,3 @@
-import type { AgentContext } from '../../../agent'
-import type { IndyPoolConfig } from '../IndyPool'
 import type {
   CredentialDefinitionTemplate,
   IndyEndpointAttrib,
@@ -8,6 +6,8 @@ import type {
   ParseRevocationRegistryTemplate,
   SchemaTemplate,
 } from './LedgerService'
+import type { AgentContext } from '../../../agent'
+import type { IndyPoolConfig } from '../IndyPool'
 import type { CredDef, default as Indy, NymRole, Schema } from 'indy-sdk'
 
 import { AgentDependencies } from '../../../agent/AgentDependencies'

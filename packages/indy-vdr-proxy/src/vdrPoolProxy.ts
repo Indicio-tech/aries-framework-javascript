@@ -1,14 +1,15 @@
-import type { Logger } from '../../core/src/logger'
-import type { DidIndyNamespace } from '../../core/src/utils'
 import type { AgentDependencies } from '@aries-framework/core'
+import type { Logger } from '@aries-framework/core/src/logger'
+import type { DidIndyNamespace } from '@aries-framework/core/src/utils'
 import type { default as Indy } from 'indy-sdk'
 import type fetch from 'node-fetch'
 import type { Response } from 'node-fetch'
 
-import { LedgerError } from '../../core/src/modules/ledger/error'
+import { LedgerError } from '@aries-framework/core/src/modules/ledger/error'
+
 import { isLedgerRejectResponse, isLedgerReqnackResponse } from '../../indy-sdk/src/ledger/util'
 
-export interface vdrPoolConfig {
+export interface VdrPoolConfig {
   id: string
   url: string
   isProduction: boolean
@@ -16,11 +17,11 @@ export interface vdrPoolConfig {
 }
 
 export class vdrPoolProxy {
-  private poolConfig: vdrPoolConfig
+  private poolConfig: VdrPoolConfig
   private indy: typeof Indy
   private fetch: typeof fetch
   private logger: Logger
-  public constructor(agentDependencies: AgentDependencies, logger: Logger, poolConfig: vdrPoolConfig) {
+  public constructor(agentDependencies: AgentDependencies, logger: Logger, poolConfig: VdrPoolConfig) {
     this.indy = agentDependencies.indy
     this.fetch = agentDependencies.fetch
     this.logger = logger
@@ -35,7 +36,7 @@ export class vdrPoolProxy {
     return this.poolConfig.url
   }
 
-  public get config(): vdrPoolConfig {
+  public get config(): VdrPoolConfig {
     return this.config
   }
 

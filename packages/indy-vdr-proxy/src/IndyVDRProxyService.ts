@@ -1,4 +1,4 @@
-import type { PublicDidRequestVDR, vdrPoolProxy } from './vdrPoolProxy'
+import type { PublicDidRequestVDR, vdrPoolProxy } from './VdrPoolProxy'
 import type { CachedDidResponse } from '@aries-framework/core'
 import type { AgentContext } from '@aries-framework/core/src/agent'
 import type {

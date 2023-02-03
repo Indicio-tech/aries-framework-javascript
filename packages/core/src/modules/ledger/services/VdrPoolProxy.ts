@@ -1,5 +1,4 @@
 import type { AgentDependencies } from '../../../agent/AgentDependencies'
-import type { Logger } from '../../../logger/Logger'
 import type { DidIndyNamespace } from '../../../utils'
 import type { default as Indy, LedgerRejectResponse, LedgerReqnackResponse, LedgerResponse } from 'indy-sdk'
 import type { Response } from 'node-fetch'
@@ -18,11 +17,9 @@ export class VdrPoolProxy {
   private poolConfig: VdrPoolConfig
   private indy: typeof Indy
   private fetch: typeof fetch
-  private logger: Logger
-  public constructor(agentDependencies: AgentDependencies, logger: Logger, poolConfig: VdrPoolConfig) {
+  public constructor(agentDependencies: AgentDependencies, poolConfig: VdrPoolConfig) {
     this.indy = agentDependencies.indy
     this.fetch = agentDependencies.fetch
-    this.logger = logger
     this.poolConfig = poolConfig
   }
 

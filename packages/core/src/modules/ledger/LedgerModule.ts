@@ -6,7 +6,7 @@ import { AnonCredsSchemaRepository } from '../indy/repository/AnonCredsSchemaRep
 
 import { LedgerApi } from './LedgerApi'
 import { LedgerModuleConfig } from './LedgerModuleConfig'
-import { IndyPoolService, IndyLedgerService } from './services'
+import { IndyVDRProxyService } from './services/IndyVDRProxyService'
 
 export class LedgerModule implements Module {
   public readonly config: LedgerModuleConfig
@@ -27,8 +27,7 @@ export class LedgerModule implements Module {
     dependencyManager.registerInstance(LedgerModuleConfig, this.config)
 
     // Services
-    dependencyManager.registerSingleton(IndyLedgerService)
-    dependencyManager.registerSingleton(IndyPoolService)
+    dependencyManager.registerSingleton(IndyVDRProxyService)
 
     // Repositories
     dependencyManager.registerSingleton(AnonCredsCredentialDefinitionRepository)

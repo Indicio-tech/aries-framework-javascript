@@ -3,7 +3,7 @@ import { AnonCredsCredentialDefinitionRepository } from '../../indy/repository/A
 import { AnonCredsSchemaRepository } from '../../indy/repository/AnonCredsSchemaRepository'
 import { LedgerApi } from '../LedgerApi'
 import { LedgerModule } from '../LedgerModule'
-import { IndyLedgerService, IndyPoolService } from '../services'
+import { IndyVDRProxyService, IndyPoolService } from '../services'
 
 jest.mock('../../../plugins/DependencyManager')
 const DependencyManagerMock = DependencyManager as jest.Mock<DependencyManager>
@@ -18,7 +18,7 @@ describe('LedgerModule', () => {
     expect(dependencyManager.registerContextScoped).toHaveBeenCalledWith(LedgerApi)
 
     expect(dependencyManager.registerSingleton).toHaveBeenCalledTimes(4)
-    expect(dependencyManager.registerSingleton).toHaveBeenCalledWith(IndyLedgerService)
+    expect(dependencyManager.registerSingleton).toHaveBeenCalledWith(IndyVDRProxyService)
     expect(dependencyManager.registerSingleton).toHaveBeenCalledWith(IndyPoolService)
     expect(dependencyManager.registerSingleton).toHaveBeenCalledWith(AnonCredsCredentialDefinitionRepository)
     expect(dependencyManager.registerSingleton).toHaveBeenCalledWith(AnonCredsSchemaRepository)

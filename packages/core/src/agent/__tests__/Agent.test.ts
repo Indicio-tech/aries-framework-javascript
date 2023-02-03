@@ -12,7 +12,7 @@ import { ConnectionService } from '../../modules/connections/services/Connection
 import { TrustPingService } from '../../modules/connections/services/TrustPingService'
 import { CredentialRepository } from '../../modules/credentials'
 import { CredentialsApi } from '../../modules/credentials/CredentialsApi'
-import { IndyLedgerService } from '../../modules/ledger'
+import { IndyVDRProxyService } from '../../modules/ledger'
 import { LedgerApi } from '../../modules/ledger/LedgerApi'
 import { ProofRepository } from '../../modules/proofs'
 import { ProofsApi } from '../../modules/proofs/ProofsApi'
@@ -180,7 +180,7 @@ describe('Agent', () => {
       expect(container.resolve(MediationRecipientService)).toBeInstanceOf(MediationRecipientService)
 
       expect(container.resolve(LedgerApi)).toBeInstanceOf(LedgerApi)
-      expect(container.resolve(IndyLedgerService)).toBeInstanceOf(IndyLedgerService)
+      expect(container.resolve(IndyVDRProxyService)).toBeInstanceOf(IndyVDRProxyService)
 
       // Symbols, interface based
       expect(container.resolve(InjectionSymbols.Logger)).toBe(agentOptions.config.logger)
@@ -223,7 +223,7 @@ describe('Agent', () => {
       expect(container.resolve(MediationRecipientService)).toBe(container.resolve(MediationRecipientService))
 
       expect(container.resolve(LedgerApi)).toBe(container.resolve(LedgerApi))
-      expect(container.resolve(IndyLedgerService)).toBe(container.resolve(IndyLedgerService))
+      expect(container.resolve(IndyVDRProxyService)).toBe(container.resolve(IndyVDRProxyService))
 
       // Symbols, interface based
       expect(container.resolve(InjectionSymbols.Logger)).toBe(container.resolve(InjectionSymbols.Logger))

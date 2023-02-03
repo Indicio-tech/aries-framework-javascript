@@ -1,6 +1,6 @@
 import type { AgentContext } from '../../../../agent'
 import type { AgentConfig } from '../../../../agent/AgentConfig'
-import type { ParseRevocationRegistryDefinitionTemplate } from '../../../ledger/services/IndyLedgerService'
+import type { ParseRevocationRegistryDefinitionTemplate } from '../../../ledger/services/IndyVDRProxyService'
 import type { CredentialFormatService } from '../../formats'
 import type { IndyCredentialFormat } from '../../formats/indy/IndyCredentialFormat'
 import type { CredentialPreviewAttribute } from '../../models/CredentialPreviewAttribute'
@@ -15,7 +15,7 @@ import { ConnectionService } from '../../../connections/services/ConnectionServi
 import { DidResolverService } from '../../../dids/services/DidResolverService'
 import { IndyHolderService } from '../../../indy/services/IndyHolderService'
 import { IndyIssuerService } from '../../../indy/services/IndyIssuerService'
-import { IndyLedgerService } from '../../../ledger/services/IndyLedgerService'
+import { IndyVDRProxyService } from '../../../ledger/services/IndyVDRProxyService'
 import { credDef, credReq, schema } from '../../__tests__/fixtures'
 import { IndyCredentialFormatService } from '../../formats'
 import { IndyCredentialUtils } from '../../formats/indy/IndyCredentialUtils'
@@ -30,13 +30,13 @@ import { V2OfferCredentialMessage } from '../../protocol/v2/messages/V2OfferCred
 import { CredentialMetadataKeys } from '../../repository'
 import { CredentialExchangeRecord } from '../../repository/CredentialExchangeRecord'
 
-jest.mock('../../../../modules/ledger/services/IndyLedgerService')
+jest.mock('../../../../modules/ledger/services/IndyVDRProxyService')
 jest.mock('../../../indy/services/IndyHolderService')
 jest.mock('../../../indy/services/IndyIssuerService')
 jest.mock('../../../dids/services/DidResolverService')
 jest.mock('../../../connections/services/ConnectionService')
 
-const IndyLedgerServiceMock = IndyLedgerService as jest.Mock<IndyLedgerService>
+const IndyVDRProxyServiceMock = IndyVDRProxyService as jest.Mock<IndyVDRProxyService>
 const IndyHolderServiceMock = IndyHolderService as jest.Mock<IndyHolderService>
 const IndyIssuerServiceMock = IndyIssuerService as jest.Mock<IndyIssuerService>
 const ConnectionServiceMock = ConnectionService as jest.Mock<ConnectionService>
@@ -164,7 +164,7 @@ const mockCredentialRecord = ({
   return credentialRecord
 }
 let indyFormatService: CredentialFormatService<IndyCredentialFormat>
-let indyLedgerService: IndyLedgerService
+let IndyVDRProxyService: IndyVDRProxyService
 let indyIssuerService: IndyIssuerService
 let indyHolderService: IndyHolderService
 let didResolverService: DidResolverService
@@ -177,7 +177,7 @@ describe('Indy CredentialFormatService', () => {
   beforeEach(async () => {
     indyIssuerService = new IndyIssuerServiceMock()
     indyHolderService = new IndyHolderServiceMock()
-    indyLedgerService = new IndyLedgerServiceMock()
+    IndyVDRProxyService = new IndyVDRProxyServiceMock()
     didResolverService = new DidResolverServiceMock()
     connectionService = new ConnectionServiceMock()
 
@@ -186,7 +186,7 @@ describe('Indy CredentialFormatService', () => {
       registerInstances: [
         [IndyIssuerService, indyIssuerService],
         [IndyHolderService, indyHolderService],
-        [IndyLedgerService, indyLedgerService],
+        [IndyVDRProxyService, IndyVDRProxyService],
         [DidResolverService, didResolverService],
         [ConnectionService, connectionService],
       ],
@@ -195,7 +195,7 @@ describe('Indy CredentialFormatService', () => {
 
     indyFormatService = new IndyCredentialFormatService()
 
-    mockFunction(indyLedgerService.getSchema).mockReturnValue(Promise.resolve(schema))
+    mockFunction(IndyVDRProxyService.getSchema).mockReturnValue(Promise.resolve(schema))
   })
 
   describe('Create Credential Proposal / Offer', () => {
@@ -327,7 +327,7 @@ describe('Indy CredentialFormatService', () => {
         connectionId: 'b1e2f039-aa39-40be-8643-6ce2797b5190',
       })
 
-      mockFunction(indyLedgerService.getCredentialDefinition).mockReturnValue(Promise.resolve(credDef))
+      mockFunction(IndyVDRProxyService.getCredentialDefinition).mockReturnValue(Promise.resolve(credDef))
 
       // when
       const { format, attachment } = await indyFormatService.acceptOffer(agentContext, {
@@ -420,8 +420,8 @@ describe('Indy CredentialFormatService', () => {
         state: CredentialState.RequestSent,
         metadata: { indyRequest: { cred_req: 'meta-data' } },
       })
-      mockFunction(indyLedgerService.getCredentialDefinition).mockReturnValue(Promise.resolve(credDef))
-      mockFunction(indyLedgerService.getRevocationRegistryDefinition).mockReturnValue(
+      mockFunction(IndyVDRProxyService.getCredentialDefinition).mockReturnValue(Promise.resolve(credDef))
+      mockFunction(IndyVDRProxyService.getRevocationRegistryDefinition).mockReturnValue(
         Promise.resolve(revocationTemplate)
       )
       mockFunction(indyHolderService.storeCredential).mockReturnValue(Promise.resolve('100'))

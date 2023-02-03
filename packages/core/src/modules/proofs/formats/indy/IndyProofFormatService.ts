@@ -40,7 +40,7 @@ import { IndyWallet } from '../../../../wallet/IndyWallet'
 import { IndyCredential, IndyCredentialInfo } from '../../../credentials'
 import { IndyCredentialUtils } from '../../../credentials/formats/indy/IndyCredentialUtils'
 import { IndyHolderService, IndyVerifierService, IndyRevocationService } from '../../../indy'
-import { IndyLedgerService } from '../../../ledger'
+import { IndyVDRProxyService } from '../../../ledger'
 import { ProofFormatSpec } from '../../models/ProofFormatSpec'
 import { PartialProof, PresentationPreview } from '../../protocol/v1/models'
 import {
@@ -69,7 +69,7 @@ export class IndyProofFormatService extends ProofFormatService {
   private indyHolderService: IndyHolderService
   private indyVerifierService: IndyVerifierService
   private indyRevocationService: IndyRevocationService
-  private ledgerService: IndyLedgerService
+  private ledgerService: IndyVDRProxyService
   private logger: Logger
   private wallet: IndyWallet
 
@@ -78,7 +78,7 @@ export class IndyProofFormatService extends ProofFormatService {
     indyHolderService: IndyHolderService,
     indyVerifierService: IndyVerifierService,
     indyRevocationService: IndyRevocationService,
-    ledgerService: IndyLedgerService,
+    ledgerService: IndyVDRProxyService,
     didCommMessageRepository: DidCommMessageRepository,
     wallet: IndyWallet
   ) {

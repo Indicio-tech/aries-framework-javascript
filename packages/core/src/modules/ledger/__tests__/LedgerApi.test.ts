@@ -1,6 +1,6 @@
 import type { AgentContext } from '../../../agent/context/AgentContext'
 import type { IndyPoolConfig } from '../IndyPool'
-import type { CredentialDefinitionTemplate } from '../services/IndyLedgerService'
+import type { CredentialDefinitionTemplate } from '../services/IndyVDRProxyService'
 import type * as Indy from 'indy-sdk'
 
 import { getAgentConfig, getAgentContext, mockFunction, mockProperty } from '../../../../tests/helpers'
@@ -14,10 +14,10 @@ import { AnonCredsSchemaRecord } from '../../indy/repository/AnonCredsSchemaReco
 import { AnonCredsSchemaRepository } from '../../indy/repository/AnonCredsSchemaRepository'
 import { LedgerApi } from '../LedgerApi'
 import { LedgerModuleConfig } from '../LedgerModuleConfig'
-import { IndyLedgerService } from '../services/IndyLedgerService'
+import { IndyVDRProxyService } from '../services/IndyVDRProxyService'
 
-jest.mock('../services/IndyLedgerService')
-const IndyLedgerServiceMock = IndyLedgerService as jest.Mock<IndyLedgerService>
+jest.mock('../services/IndyVDRProxyService')
+const IndyVDRProxyServiceMock = IndyVDRProxyService as jest.Mock<IndyVDRProxyService>
 
 jest.mock('../../indy/repository/AnonCredsCredentialDefinitionRepository')
 const AnonCredsCredentialDefinitionRepositoryMock =
@@ -104,7 +104,7 @@ const pools: IndyPoolConfig[] = [
 
 describe('LedgerApi', () => {
   let wallet: IndyWallet
-  let ledgerService: IndyLedgerService
+  let ledgerService: IndyVDRProxyService
   let anonCredsCredentialDefinitionRepository: AnonCredsCredentialDefinitionRepository
   let anonCredsSchemaRepository: AnonCredsSchemaRepository
   let ledgerApi: LedgerApi
@@ -126,7 +126,7 @@ describe('LedgerApi', () => {
   })
 
   beforeEach(async () => {
-    ledgerService = new IndyLedgerServiceMock()
+    ledgerService = new IndyVDRProxyServiceMock()
 
     agentContext = getAgentContext({
       wallet,

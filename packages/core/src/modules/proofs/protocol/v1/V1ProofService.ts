@@ -46,7 +46,7 @@ import { ConnectionService } from '../../../connections'
 import { CredentialRepository } from '../../../credentials'
 import { IndyCredentialInfo } from '../../../credentials/formats/indy/models/IndyCredentialInfo'
 import { IndyHolderService, IndyRevocationService } from '../../../indy'
-import { IndyLedgerService } from '../../../ledger/services/IndyLedgerService'
+import { IndyVDRProxyService } from '../../../ledger/services/IndyVDRProxyService'
 import { ProofService } from '../../ProofService'
 import { PresentationProblemReportReason } from '../../errors/PresentationProblemReportReason'
 import { IndyProofFormatService } from '../../formats/indy/IndyProofFormatService'
@@ -83,7 +83,7 @@ import { PresentationPreview } from './models/V1PresentationPreview'
 @scoped(Lifecycle.ContainerScoped)
 export class V1ProofService extends ProofService<[IndyProofFormat]> {
   private credentialRepository: CredentialRepository
-  private ledgerService: IndyLedgerService
+  private ledgerService: IndyVDRProxyService
   private indyHolderService: IndyHolderService
   private indyRevocationService: IndyRevocationService
   private indyProofFormatService: IndyProofFormatService
@@ -91,7 +91,7 @@ export class V1ProofService extends ProofService<[IndyProofFormat]> {
   public constructor(
     proofRepository: ProofRepository,
     didCommMessageRepository: DidCommMessageRepository,
-    ledgerService: IndyLedgerService,
+    ledgerService: IndyVDRProxyService,
     @inject(InjectionSymbols.Wallet) wallet: Wallet,
     agentConfig: AgentConfig,
     connectionService: ConnectionService,

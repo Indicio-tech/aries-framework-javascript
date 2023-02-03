@@ -1,5 +1,5 @@
 import type { IndyPool } from '../../../../ledger'
-import type { IndyEndpointAttrib } from '../../../../ledger/services/IndyLedgerService'
+import type { IndyEndpointAttrib } from '../../../../ledger/services/IndyVDRProxyService'
 import type { GetNymResponse } from 'indy-sdk'
 
 import { getAgentConfig, getAgentContext, mockFunction, mockProperty } from '../../../../../../tests/helpers'

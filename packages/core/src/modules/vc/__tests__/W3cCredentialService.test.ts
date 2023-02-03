@@ -42,7 +42,7 @@ const signatureSuiteRegistry = new SignatureSuiteRegistry([
 
 const signingProviderRegistry = new SigningProviderRegistry([])
 
-jest.mock('../../ledger/services/IndyLedgerService')
+jest.mock('../../ledger/services/IndyVDRProxyService')
 
 jest.mock('../repository/W3cCredentialRepository')
 const W3cCredentialRepositoryMock = W3cCredentialRepository as jest.Mock<W3cCredentialRepository>

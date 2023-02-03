@@ -14,7 +14,7 @@ import { DidCommMessageRepository } from '../../../storage'
 import { ConnectionService, DidExchangeState } from '../../connections'
 import { IndyHolderService } from '../../indy/services/IndyHolderService'
 import { IndyRevocationService } from '../../indy/services/IndyRevocationService'
-import { IndyLedgerService } from '../../ledger/services'
+import { IndyVDRProxyService } from '../../ledger/services'
 import { ProofEventTypes } from '../ProofEvents'
 import { PresentationProblemReportReason } from '../errors/PresentationProblemReportReason'
 import { IndyProofFormatService } from '../formats/indy/IndyProofFormatService'
@@ -29,7 +29,7 @@ import { credDef } from './fixtures'
 
 // Mock classes
 jest.mock('../repository/ProofRepository')
-jest.mock('../../../modules/ledger/services/IndyLedgerService')
+jest.mock('../../../modules/ledger/services/IndyVDRProxyService')
 jest.mock('../../indy/services/IndyHolderService')
 jest.mock('../../indy/services/IndyIssuerService')
 jest.mock('../../indy/services/IndyVerifierService')
@@ -39,7 +39,7 @@ jest.mock('../../../storage/Repository')
 
 // Mock typed object
 const ProofRepositoryMock = ProofRepository as jest.Mock<ProofRepository>
-const IndyLedgerServiceMock = IndyLedgerService as jest.Mock<IndyLedgerService>
+const IndyVDRProxyServiceMock = IndyVDRProxyService as jest.Mock<IndyVDRProxyService>
 const IndyHolderServiceMock = IndyHolderService as jest.Mock<IndyHolderService>
 const IndyRevocationServiceMock = IndyRevocationService as jest.Mock<IndyRevocationService>
 const connectionServiceMock = ConnectionService as jest.Mock<ConnectionService>
@@ -96,7 +96,7 @@ const mockProofExchangeRecord = ({
 describe('V1ProofService', () => {
   let proofRepository: ProofRepository
   let proofService: V1ProofService
-  let ledgerService: IndyLedgerService
+  let ledgerService: IndyVDRProxyService
   let wallet: Wallet
   let indyHolderService: IndyHolderService
   let indyRevocationService: IndyRevocationService
@@ -113,7 +113,7 @@ describe('V1ProofService', () => {
     proofRepository = new ProofRepositoryMock()
     indyHolderService = new IndyHolderServiceMock()
     indyRevocationService = new IndyRevocationServiceMock()
-    ledgerService = new IndyLedgerServiceMock()
+    ledgerService = new IndyVDRProxyServiceMock()
     eventEmitter = new EventEmitter(agentConfig.agentDependencies, new Subject())
     connectionService = new connectionServiceMock()
     didCommMessageRepository = new didCommMessageRepositoryMock()

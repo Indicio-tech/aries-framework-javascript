@@ -10,7 +10,7 @@ import { IndySdkError } from '../../../error/IndySdkError'
 import { Logger } from '../../../logger'
 import { injectable, inject } from '../../../plugins'
 import { isIndyError } from '../../../utils/indyError'
-import { IndyLedgerService } from '../../ledger'
+import { IndyVDRProxyService } from '../../ledger'
 
 import { IndyUtilitiesService } from './IndyUtilitiesService'
 
@@ -23,12 +23,12 @@ enum RequestReferentType {
 export class IndyRevocationService {
   private indy: typeof Indy
   private indyUtilitiesService: IndyUtilitiesService
-  private ledgerService: IndyLedgerService
+  private ledgerService: IndyVDRProxyService
   private logger: Logger
 
   public constructor(
     indyUtilitiesService: IndyUtilitiesService,
-    ledgerService: IndyLedgerService,
+    ledgerService: IndyVDRProxyService,
     @inject(InjectionSymbols.AgentDependencies) agentDependencies: AgentDependencies,
     @inject(InjectionSymbols.Logger) logger: Logger
   ) {

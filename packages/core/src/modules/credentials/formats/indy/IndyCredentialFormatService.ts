@@ -35,7 +35,7 @@ import { ConnectionService } from '../../../connections'
 import { DidResolverService, findVerificationMethodByKeyType } from '../../../dids'
 import { IndyHolderService } from '../../../indy/services/IndyHolderService'
 import { IndyIssuerService } from '../../../indy/services/IndyIssuerService'
-import { IndyLedgerService } from '../../../ledger'
+import { IndyVDRProxyService } from '../../../ledger'
 import { CredentialProblemReportError, CredentialProblemReportReason } from '../../errors'
 import { CredentialFormatSpec } from '../../models/CredentialFormatSpec'
 import { CredentialPreviewAttribute } from '../../models/CredentialPreviewAttribute'
@@ -192,13 +192,13 @@ export class IndyCredentialFormatService implements CredentialFormatService<Indy
   ): Promise<CredentialFormatCreateReturn> {
     const indyFormat = credentialFormats?.indy
 
-    const indyLedgerService = agentContext.dependencyManager.resolve(IndyLedgerService)
+    const IndyVDRProxyService = agentContext.dependencyManager.resolve(IndyVDRProxyService)
     const indyHolderService = agentContext.dependencyManager.resolve(IndyHolderService)
 
     const holderDid = indyFormat?.holderDid ?? (await this.getIndyHolderDid(agentContext, credentialRecord))
 
     const credentialOffer = offerAttachment.getDataAsJson<Indy.CredOffer>()
-    const credentialDefinition = await indyLedgerService.getCredentialDefinition(
+    const credentialDefinition = await IndyVDRProxyService.getCredentialDefinition(
       agentContext,
       credentialOffer.cred_def_id
     )
@@ -297,7 +297,7 @@ export class IndyCredentialFormatService implements CredentialFormatService<Indy
   ): Promise<void> {
     const credentialRequestMetadata = credentialRecord.metadata.get(CredentialMetadataKeys.IndyRequest)
 
-    const indyLedgerService = agentContext.dependencyManager.resolve(IndyLedgerService)
+    const IndyVDRProxyService = agentContext.dependencyManager.resolve(IndyVDRProxyService)
     const indyHolderService = agentContext.dependencyManager.resolve(IndyHolderService)
 
     if (!credentialRequestMetadata) {
@@ -308,12 +308,12 @@ export class IndyCredentialFormatService implements CredentialFormatService<Indy
     }
 
     const indyCredential = attachment.getDataAsJson<Indy.Cred>()
-    const credentialDefinition = await indyLedgerService.getCredentialDefinition(
+    const credentialDefinition = await IndyVDRProxyService.getCredentialDefinition(
       agentContext,
       indyCredential.cred_def_id
     )
     const revocationRegistry = indyCredential.rev_reg_id
-      ? await indyLedgerService.getRevocationRegistryDefinition(agentContext, indyCredential.rev_reg_id)
+      ? await IndyVDRProxyService.getRevocationRegistryDefinition(agentContext, indyCredential.rev_reg_id)
       : null
 
     if (!credentialRecord.credentialAttributes) {
@@ -485,9 +485,9 @@ export class IndyCredentialFormatService implements CredentialFormatService<Indy
     offer: Indy.CredOffer,
     attributes: CredentialPreviewAttribute[]
   ): Promise<void> {
-    const indyLedgerService = agentContext.dependencyManager.resolve(IndyLedgerService)
+    const IndyVDRProxyService = agentContext.dependencyManager.resolve(IndyVDRProxyService)
 
-    const schema = await indyLedgerService.getSchema(agentContext, offer.schema_id)
+    const schema = await IndyVDRProxyService.getSchema(agentContext, offer.schema_id)
 
     IndyCredentialUtils.checkAttributesMatch(schema, attributes)
   }

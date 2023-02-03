@@ -12,7 +12,7 @@ import { DidCommMessageRepository } from '../../../../../storage'
 import { JsonTransformer } from '../../../../../utils'
 import { DidExchangeState } from '../../../../connections'
 import { ConnectionService } from '../../../../connections/services/ConnectionService'
-import { IndyLedgerService } from '../../../../ledger/services'
+import { IndyVDRProxyService } from '../../../../ledger/services'
 import { RoutingService } from '../../../../routing/services/RoutingService'
 import { CredentialEventTypes } from '../../../CredentialEvents'
 import { schema, credDef } from '../../../__tests__/fixtures'
@@ -27,7 +27,7 @@ import { V1CredentialPreview } from '../messages/V1CredentialPreview'
 
 // Mock classes
 jest.mock('../../../repository/CredentialRepository')
-jest.mock('../../../../ledger/services/IndyLedgerService')
+jest.mock('../../../../ledger/services/IndyVDRProxyService')
 jest.mock('../../../formats/indy/IndyCredentialFormatService')
 jest.mock('../../../../../storage/didcomm/DidCommMessageRepository')
 jest.mock('../../../../routing/services/RoutingService')
@@ -36,7 +36,7 @@ jest.mock('../../../../../agent/Dispatcher')
 
 // Mock typed object
 const CredentialRepositoryMock = CredentialRepository as jest.Mock<CredentialRepository>
-const IndyLedgerServiceMock = IndyLedgerService as jest.Mock<IndyLedgerService>
+const IndyVDRProxyServiceMock = IndyVDRProxyService as jest.Mock<IndyVDRProxyService>
 const IndyCredentialFormatServiceMock = IndyCredentialFormatService as jest.Mock<IndyCredentialFormatService>
 const DidCommMessageRepositoryMock = DidCommMessageRepository as jest.Mock<DidCommMessageRepository>
 const RoutingServiceMock = RoutingService as jest.Mock<RoutingService>
@@ -46,7 +46,7 @@ const DispatcherMock = Dispatcher as jest.Mock<Dispatcher>
 const credentialRepository = new CredentialRepositoryMock()
 const didCommMessageRepository = new DidCommMessageRepositoryMock()
 const routingService = new RoutingServiceMock()
-const indyLedgerService = new IndyLedgerServiceMock()
+const IndyVDRProxyService = new IndyVDRProxyServiceMock()
 const indyCredentialFormatService = new IndyCredentialFormatServiceMock()
 const dispatcher = new DispatcherMock()
 const connectionService = new ConnectionServiceMock()
@@ -108,8 +108,8 @@ describe('V1CredentialProtocolProposeOffer', () => {
   beforeEach(async () => {
     // mock function implementations
     mockFunction(connectionService.getById).mockResolvedValue(connection)
-    mockFunction(indyLedgerService.getCredentialDefinition).mockResolvedValue(credDef)
-    mockFunction(indyLedgerService.getSchema).mockResolvedValue(schema)
+    mockFunction(IndyVDRProxyService.getCredentialDefinition).mockResolvedValue(credDef)
+    mockFunction(IndyVDRProxyService.getSchema).mockResolvedValue(schema)
 
     credentialProtocol = new V1CredentialProtocol({
       indyCredentialFormat: indyCredentialFormatService,

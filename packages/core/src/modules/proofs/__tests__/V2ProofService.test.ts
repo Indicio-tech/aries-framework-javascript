@@ -11,7 +11,7 @@ import { InboundMessageContext } from '../../../agent/models/InboundMessageConte
 import { Attachment, AttachmentData } from '../../../decorators/attachment/Attachment'
 import { DidCommMessageRepository } from '../../../storage'
 import { ConnectionService, DidExchangeState } from '../../connections'
-import { IndyLedgerService } from '../../ledger/services/IndyLedgerService'
+import { IndyVDRProxyService } from '../../ledger/services/IndyVDRProxyService'
 import { ProofEventTypes } from '../ProofEvents'
 import { PresentationProblemReportReason } from '../errors/PresentationProblemReportReason'
 import { V2_INDY_PRESENTATION, V2_INDY_PRESENTATION_REQUEST } from '../formats/ProofFormatConstants'
@@ -26,7 +26,7 @@ import { credDef } from './fixtures'
 
 // Mock classes
 jest.mock('../repository/ProofRepository')
-jest.mock('../../../modules/ledger/services/IndyLedgerService')
+jest.mock('../../../modules/ledger/services/IndyVDRProxyService')
 jest.mock('../../indy/services/IndyHolderService')
 jest.mock('../../indy/services/IndyIssuerService')
 jest.mock('../../indy/services/IndyVerifierService')
@@ -35,7 +35,7 @@ jest.mock('../../../storage/Repository')
 
 // Mock typed object
 const ProofRepositoryMock = ProofRepository as jest.Mock<ProofRepository>
-const IndyLedgerServiceMock = IndyLedgerService as jest.Mock<IndyLedgerService>
+const IndyVDRProxyServiceMock = IndyVDRProxyService as jest.Mock<IndyVDRProxyService>
 const connectionServiceMock = ConnectionService as jest.Mock<ConnectionService>
 const didCommMessageRepositoryMock = DidCommMessageRepository as jest.Mock<DidCommMessageRepository>
 const indyProofFormatServiceMock = IndyProofFormatService as jest.Mock<IndyProofFormatService>
@@ -98,7 +98,7 @@ const mockProofExchangeRecord = ({
 describe('V2ProofService', () => {
   let proofRepository: ProofRepository
   let proofService: V2ProofService
-  let ledgerService: IndyLedgerService
+  let ledgerService: IndyVDRProxyService
   let wallet: Wallet
   let eventEmitter: EventEmitter
   let connectionService: ConnectionService
@@ -110,7 +110,7 @@ describe('V2ProofService', () => {
     agentContext = getAgentContext()
     const agentConfig = getAgentConfig('V2ProofServiceTest')
     proofRepository = new ProofRepositoryMock()
-    ledgerService = new IndyLedgerServiceMock()
+    ledgerService = new IndyVDRProxyServiceMock()
     eventEmitter = new EventEmitter(agentConfig.agentDependencies, new Subject())
     connectionService = new connectionServiceMock()
     didCommMessageRepository = new didCommMessageRepositoryMock()

@@ -19,19 +19,19 @@ import { AnonCredsSchemaRecord } from '../indy/repository/AnonCredsSchemaRecord'
 import { AnonCredsSchemaRepository } from '../indy/repository/AnonCredsSchemaRepository'
 
 import { LedgerModuleConfig } from './LedgerModuleConfig'
-import { IndyLedgerService } from './services'
+import { IndyVDRProxyService } from './services'
 
 @injectable()
 export class LedgerApi {
   public config: LedgerModuleConfig
 
-  private ledgerService: IndyLedgerService
+  private ledgerService: IndyVDRProxyService
   private agentContext: AgentContext
   private anonCredsCredentialDefinitionRepository: AnonCredsCredentialDefinitionRepository
   private anonCredsSchemaRepository: AnonCredsSchemaRepository
 
   public constructor(
-    ledgerService: IndyLedgerService,
+    ledgerService: IndyVDRProxyService,
     agentContext: AgentContext,
     anonCredsCredentialDefinitionRepository: AnonCredsCredentialDefinitionRepository,
     anonCredsSchemaRepository: AnonCredsSchemaRepository,

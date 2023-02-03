@@ -1,5 +1,6 @@
 import type { AgentContext } from '../../../../agent'
 import type { IndyEndpointAttrib, IndyPool } from '../../../ledger'
+import type { VdrPoolProxy } from '../../../ledger/services/VdrPoolProxy'
 import type { DidRegistrar } from '../../domain/DidRegistrar'
 import type { DidCreateOptions, DidCreateResult, DidDeactivateResult, DidUpdateResult } from '../../types'
 import type * as Indy from 'indy-sdk'
@@ -8,7 +9,7 @@ import { IndySdkError } from '../../../../error'
 import { injectable } from '../../../../plugins'
 import { isIndyError } from '../../../../utils/indyError'
 import { assertIndyWallet } from '../../../../wallet/util/assertIndyWallet'
-import { IndyPoolService } from '../../../ledger'
+import { IndyVDRProxyService } from '../../../ledger'
 import { DidDocumentRole } from '../../domain/DidDocumentRole'
 import { DidRecord, DidRepository } from '../../repository'
 
@@ -20,7 +21,7 @@ export class IndySdkSovDidRegistrar implements DidRegistrar {
 
   public async create(agentContext: AgentContext, options: SovDidCreateOptions): Promise<DidCreateResult> {
     const indy = agentContext.config.agentDependencies.indy
-    const indyPoolService = agentContext.dependencyManager.resolve(IndyPoolService)
+    const indyPoolService = agentContext.dependencyManager.resolve(IndyVDRProxyService)
     const didRepository = agentContext.dependencyManager.resolve(DidRepository)
 
     const { alias, role, submitterDid, indyNamespace } = options.options
@@ -159,10 +160,9 @@ export class IndySdkSovDidRegistrar implements DidRegistrar {
     targetDid: string,
     verkey: string,
     alias: string,
-    pool: IndyPool,
+    pool: VdrPoolProxy,
     role?: Indy.NymRole
   ) {
-    const indyPoolService = agentContext.dependencyManager.resolve(IndyPoolService)
     const indy = agentContext.config.agentDependencies.indy
 
     try {
@@ -170,7 +170,7 @@ export class IndySdkSovDidRegistrar implements DidRegistrar {
 
       const request = await indy.buildNymRequest(submitterDid, targetDid, verkey, alias, role || null)
 
-      const response = await indyPoolService.submitWriteRequest(agentContext, pool, request, submitterDid)
+      const response = await pool.submitWriteRequest(request)
 
       agentContext.config.logger.debug(`Registered public did '${targetDid}' on ledger '${pool.id}'`, {
         response,
@@ -196,9 +196,8 @@ export class IndySdkSovDidRegistrar implements DidRegistrar {
     agentContext: AgentContext,
     did: string,
     endpoints: IndyEndpointAttrib,
-    pool: IndyPool
+    pool: VdrPoolProxy
   ): Promise<void> {
-    const indyPoolService = agentContext.dependencyManager.resolve(IndyPoolService)
     const indy = agentContext.config.agentDependencies.indy
 
     try {
@@ -206,7 +205,7 @@ export class IndySdkSovDidRegistrar implements DidRegistrar {
 
       const request = await indy.buildAttribRequest(did, did, null, { endpoint: endpoints }, null)
 
-      const response = await indyPoolService.submitWriteRequest(agentContext, pool, request, did)
+      const response = await pool.submitWriteRequest(request)
       agentContext.config.logger.debug(`Successfully set endpoints for did '${did}' on ledger '${pool.id}'`, {
         response,
         endpoints,

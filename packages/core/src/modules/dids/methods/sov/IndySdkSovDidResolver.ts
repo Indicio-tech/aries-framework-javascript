@@ -6,7 +6,7 @@ import type { DidResolutionResult, ParsedDid } from '../../types'
 import { IndySdkError } from '../../../../error'
 import { injectable } from '../../../../plugins'
 import { isIndyError } from '../../../../utils/indyError'
-import { IndyPoolService } from '../../../ledger'
+import { IndyVDRProxyService } from '../../../ledger'
 
 import { addServicesFromEndpointsAttrib, sovDidDocumentFromDid } from './util'
 
@@ -43,7 +43,7 @@ export class IndySdkSovDidResolver implements DidResolver {
   }
 
   private async getPublicDid(agentContext: AgentContext, did: string) {
-    const indyPoolService = agentContext.dependencyManager.resolve(IndyPoolService)
+    const indyPoolService = agentContext.dependencyManager.resolve(IndyVDRProxyService)
 
     // Getting the pool for a did also retrieves the DID. We can just use that
     const { did: didResponse } = await indyPoolService.getPoolForDid(agentContext, did)
@@ -52,7 +52,7 @@ export class IndySdkSovDidResolver implements DidResolver {
   }
 
   private async getEndpointsForDid(agentContext: AgentContext, did: string) {
-    const indyPoolService = agentContext.dependencyManager.resolve(IndyPoolService)
+    const indyPoolService = agentContext.dependencyManager.resolve(IndyVDRProxyService)
     const indy = agentContext.config.agentDependencies.indy
 
     const { pool } = await indyPoolService.getPoolForDid(agentContext, did)
@@ -63,7 +63,7 @@ export class IndySdkSovDidResolver implements DidResolver {
       const request = await indy.buildGetAttribRequest(null, did, 'endpoint', null, null)
 
       agentContext.config.logger.debug(`Submitting get endpoint ATTRIB request for did '${did}' to ledger '${pool.id}'`)
-      const response = await indyPoolService.submitReadRequest(pool, request)
+      const response = await pool.submitReadRequest(request)
 
       if (!response.result.data) return {}
 

@@ -1,21 +1,13 @@
-import type { IndyPoolConfig } from './IndyPool'
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import type { SchemaTemplate, CredentialDefinitionTemplate } from './services'
+import type { VdrPoolConfig } from './services/VdrPoolProxy'
 import type { CredDef, NymRole, Schema } from 'indy-sdk'
 
 import { AgentContext } from '../../agent'
-import { AriesFrameworkError } from '../../error'
 import { IndySdkError } from '../../error/IndySdkError'
 import { injectable } from '../../plugins'
 import { isIndyError } from '../../utils/indyError'
-import {
-  getLegacyCredentialDefinitionId,
-  getLegacySchemaId,
-  getQualifiedIndyCredentialDefinitionId,
-  getQualifiedIndySchemaId,
-} from '../../utils/indyIdentifiers'
-import { AnonCredsCredentialDefinitionRecord } from '../indy/repository/AnonCredsCredentialDefinitionRecord'
 import { AnonCredsCredentialDefinitionRepository } from '../indy/repository/AnonCredsCredentialDefinitionRepository'
-import { AnonCredsSchemaRecord } from '../indy/repository/AnonCredsSchemaRecord'
 import { AnonCredsSchemaRepository } from '../indy/repository/AnonCredsSchemaRepository'
 
 import { LedgerModuleConfig } from './LedgerModuleConfig'
@@ -44,7 +36,7 @@ export class LedgerApi {
     this.config = config
   }
 
-  public setPools(poolConfigs: IndyPoolConfig[]) {
+  public setPools(poolConfigs: VdrPoolConfig[]) {
     return this.ledgerService.setPools(poolConfigs)
   }
 
@@ -52,27 +44,21 @@ export class LedgerApi {
    * Connect to all the ledger pools
    */
   public async connectToPools() {
-    await this.ledgerService.connectToPools()
+    this.agentContext.config.logger.info("No need, indy-vdr-proxy doesn't need to connect to pools")
   }
 
   /**
    * @deprecated use agent.dids.create instead
    */
   public async registerPublicDid(did: string, verkey: string, alias: string, role?: NymRole) {
-    const myPublicDid = this.agentContext.wallet.publicDid?.did
-
-    if (!myPublicDid) {
-      throw new AriesFrameworkError('Agent has no public DID.')
-    }
-
-    return this.ledgerService.registerPublicDid(this.agentContext, myPublicDid, did, verkey, alias, role)
+    throw new Error("Deprecated function 'registerPublicDid' called")
   }
 
   /**
    * @deprecated use agent.dids.resolve instead
    */
   public async getPublicDid(did: string) {
-    return this.ledgerService.getPublicDid(this.agentContext, did)
+    throw new Error("Deprecated function 'getPublicDid' called")
   }
 
   public async getSchema(id: string) {
@@ -80,39 +66,7 @@ export class LedgerApi {
   }
 
   public async registerSchema(schema: SchemaTemplate): Promise<Schema> {
-    const did = this.agentContext.wallet.publicDid?.did
-
-    if (!did) {
-      throw new AriesFrameworkError('Agent has no public DID.')
-    }
-
-    const schemaId = getLegacySchemaId(did, schema.name, schema.version)
-
-    // Generate the qualified ID
-    const qualifiedIdentifier = getQualifiedIndySchemaId(this.ledgerService.getDidIndyWriteNamespace(), schemaId)
-
-    // Try find the schema in the wallet
-    const schemaRecord = await this.anonCredsSchemaRepository.findById(this.agentContext, qualifiedIdentifier)
-    // Schema in wallet
-    if (schemaRecord) {
-      // Transform qualified to unqualified
-      return {
-        ...schemaRecord.schema,
-        id: schemaId,
-      }
-    }
-
-    const schemaFromLedger = await this.findBySchemaIdOnLedger(schemaId)
-
-    if (schemaFromLedger) return schemaFromLedger
-    const createdSchema = await this.ledgerService.registerSchema(this.agentContext, did, schema)
-
-    const anonCredsSchema = new AnonCredsSchemaRecord({
-      schema: { ...createdSchema, id: qualifiedIdentifier },
-    })
-    await this.anonCredsSchemaRepository.save(this.agentContext, anonCredsSchema)
-
-    return createdSchema
+    throw new Error("Issuer function: 'registerSchema' called")
   }
 
   private async findBySchemaIdOnLedger(schemaId: string) {
@@ -138,60 +92,7 @@ export class LedgerApi {
   public async registerCredentialDefinition(
     credentialDefinitionTemplate: Omit<CredentialDefinitionTemplate, 'signatureType'>
   ) {
-    const did = this.agentContext.wallet.publicDid?.did
-
-    if (!did) {
-      throw new AriesFrameworkError('Agent has no public DID.')
-    }
-
-    // Construct credential definition ID
-    const credentialDefinitionId = getLegacyCredentialDefinitionId(
-      did,
-      credentialDefinitionTemplate.schema.seqNo,
-      credentialDefinitionTemplate.tag
-    )
-
-    // Construct qualified identifier
-    const qualifiedIdentifier = getQualifiedIndyCredentialDefinitionId(
-      this.ledgerService.getDidIndyWriteNamespace(),
-      credentialDefinitionId
-    )
-
-    // Check if the credential exists in wallet. If so, return it
-    const credentialDefinitionRecord = await this.anonCredsCredentialDefinitionRepository.findById(
-      this.agentContext,
-      qualifiedIdentifier
-    )
-
-    // Credential Definition in wallet
-    if (credentialDefinitionRecord) {
-      // Transform qualified to unqualified
-      return {
-        ...credentialDefinitionRecord.credentialDefinition,
-        id: credentialDefinitionId,
-      }
-    }
-
-    // Check for the credential on the ledger.
-    const credentialDefinitionOnLedger = await this.findByCredentialDefinitionIdOnLedger(credentialDefinitionId)
-    if (credentialDefinitionOnLedger) {
-      throw new AriesFrameworkError(
-        `No credential definition record found and credential definition ${credentialDefinitionId} already exists on the ledger.`
-      )
-    }
-
-    // Register the credential
-    const registeredDefinition = await this.ledgerService.registerCredentialDefinition(this.agentContext, did, {
-      ...credentialDefinitionTemplate,
-      signatureType: 'CL',
-    })
-    // Replace the unqualified with qualified Identifier in anonCred
-    const anonCredCredential = new AnonCredsCredentialDefinitionRecord({
-      credentialDefinition: { ...registeredDefinition, id: qualifiedIdentifier },
-    })
-    await this.anonCredsCredentialDefinitionRepository.save(this.agentContext, anonCredCredential)
-
-    return registeredDefinition
+    throw new Error("Issuer function: 'registerCredentialDefinition' called")
   }
 
   public async getCredentialDefinition(id: string) {

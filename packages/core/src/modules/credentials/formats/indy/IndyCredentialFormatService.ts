@@ -192,13 +192,13 @@ export class IndyCredentialFormatService implements CredentialFormatService<Indy
   ): Promise<CredentialFormatCreateReturn> {
     const indyFormat = credentialFormats?.indy
 
-    const IndyVDRProxyService = agentContext.dependencyManager.resolve(IndyVDRProxyService)
+    const indyVDRProxyService = agentContext.dependencyManager.resolve(IndyVDRProxyService)
     const indyHolderService = agentContext.dependencyManager.resolve(IndyHolderService)
 
     const holderDid = indyFormat?.holderDid ?? (await this.getIndyHolderDid(agentContext, credentialRecord))
 
     const credentialOffer = offerAttachment.getDataAsJson<Indy.CredOffer>()
-    const credentialDefinition = await IndyVDRProxyService.getCredentialDefinition(
+    const credentialDefinition = await indyVDRProxyService.getCredentialDefinition(
       agentContext,
       credentialOffer.cred_def_id
     )
@@ -297,7 +297,7 @@ export class IndyCredentialFormatService implements CredentialFormatService<Indy
   ): Promise<void> {
     const credentialRequestMetadata = credentialRecord.metadata.get(CredentialMetadataKeys.IndyRequest)
 
-    const IndyVDRProxyService = agentContext.dependencyManager.resolve(IndyVDRProxyService)
+    const indyVDRProxyService = agentContext.dependencyManager.resolve(IndyVDRProxyService)
     const indyHolderService = agentContext.dependencyManager.resolve(IndyHolderService)
 
     if (!credentialRequestMetadata) {
@@ -308,12 +308,12 @@ export class IndyCredentialFormatService implements CredentialFormatService<Indy
     }
 
     const indyCredential = attachment.getDataAsJson<Indy.Cred>()
-    const credentialDefinition = await IndyVDRProxyService.getCredentialDefinition(
+    const credentialDefinition = await indyVDRProxyService.getCredentialDefinition(
       agentContext,
       indyCredential.cred_def_id
     )
     const revocationRegistry = indyCredential.rev_reg_id
-      ? await IndyVDRProxyService.getRevocationRegistryDefinition(agentContext, indyCredential.rev_reg_id)
+      ? await indyVDRProxyService.getRevocationRegistryDefinition(agentContext, indyCredential.rev_reg_id)
       : null
 
     if (!credentialRecord.credentialAttributes) {
@@ -485,9 +485,9 @@ export class IndyCredentialFormatService implements CredentialFormatService<Indy
     offer: Indy.CredOffer,
     attributes: CredentialPreviewAttribute[]
   ): Promise<void> {
-    const IndyVDRProxyService = agentContext.dependencyManager.resolve(IndyVDRProxyService)
+    const indyVDRProxyService = agentContext.dependencyManager.resolve(IndyVDRProxyService)
 
-    const schema = await IndyVDRProxyService.getSchema(agentContext, offer.schema_id)
+    const schema = await indyVDRProxyService.getSchema(agentContext, offer.schema_id)
 
     IndyCredentialUtils.checkAttributesMatch(schema, attributes)
   }

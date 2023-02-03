@@ -266,10 +266,11 @@ export class IndyVDRProxyService extends LedgerService {
   public async getRevocationRegistryDelta(
     agentContext: AgentContext,
     revocationRegistryDefinitionId: string,
-    to: number,
+    to: number = new Date().getTime(),
     from: number
   ): Promise<ParseRevocationRegistryDeltaTemplate> {
     //TODO - implement a cache
+
     const did = didFromRevocationRegistryDefinitionId(revocationRegistryDefinitionId)
     const { pool } = await this.getPoolForDid(agentContext, did)
 

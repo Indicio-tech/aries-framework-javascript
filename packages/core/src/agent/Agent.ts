@@ -160,7 +160,7 @@ export class Agent<AgentModules extends AgentModulesInput = any> extends BaseAge
     await super.initialize()
 
     // set the pools on the ledger.
-    this.ledger.setPools(this.ledger.config.indyLedgers)
+    this.ledger.setPools(this.ledger.config.vdrPoolConfigs)
     // As long as value isn't false we will async connect to all genesis pools on startup
     if (this.ledger.config.connectToIndyLedgersOnStartup) {
       this.ledger.connectToPools().catch((error) => {

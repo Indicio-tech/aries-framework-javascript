@@ -1,4 +1,5 @@
 import type { IndyPoolConfig } from './IndyPool'
+import type { VdrPoolConfig } from './services/VdrPoolProxy'
 
 /**
  * LedgerModuleConfigOptions defines the interface for the options of the RecipientModuleConfig class.
@@ -22,6 +23,8 @@ export interface LedgerModuleConfigOptions {
    * @default []
    */
   indyLedgers?: IndyPoolConfig[]
+
+  vdrPoolConfigs?: VdrPoolConfig[]
 }
 
 export class LedgerModuleConfig {
@@ -39,5 +42,10 @@ export class LedgerModuleConfig {
   /** See {@link LedgerModuleConfigOptions.indyLedgers} */
   public get indyLedgers() {
     return this.options.indyLedgers ?? []
+  }
+
+  /** See {@link LedgerModuleConfigOptions.vdrPoolConfigs} */
+  public get vdrPoolConfigs() {
+    return this.options.vdrPoolConfigs ?? []
   }
 }

@@ -1,36 +1,36 @@
-import type { vdrPoolProxy } from '../../../../../indy-vdr-proxy'
+import type { VdrPoolProxy } from './VdrPoolProxy'
 import type { AgentContext } from '../../../agent'
 import type { IndyPoolConfig } from '../IndyPool'
 import type { CredDef, default as Indy, Schema } from 'indy-sdk'
 
 export abstract class LedgerService {
-  abstract setPools(poolsConfigs: IndyPoolConfig[] | vdrPoolProxy[]): void
+  public abstract setPools(poolsConfigs: IndyPoolConfig[] | VdrPoolProxy[]): void
 
-  abstract registerSchema(agent: AgentContext, did: string, schemaTemplate: SchemaTemplate): Promise<Schema>
+  public abstract registerSchema(agent: AgentContext, did: string, schemaTemplate: SchemaTemplate): Promise<Schema>
 
-  abstract getSchema(agentContext: AgentContext, schemaId: string): Promise<Schema>
+  public abstract getSchema(agentContext: AgentContext, schemaId: string): Promise<Schema>
 
-  abstract registerCredentialDefinition(
+  public abstract registerCredentialDefinition(
     agentContext: AgentContext,
     did: string,
     createCredentialDefinition: CredentialDefinitionTemplate
   ): Promise<CredDef>
 
-  abstract getCredentialDefinition(agentContext: AgentContext, credentialDefinitionId: string): Promise<CredDef>
+  public abstract getCredentialDefinition(agentContext: AgentContext, credentialDefinitionId: string): Promise<CredDef>
 
-  abstract getRevocationRegistryDefinition(
+  public abstract getRevocationRegistryDefinition(
     agentContext: AgentContext,
     revocationRegistryDefinitionId: string
   ): Promise<ParseRevocationRegistryDefinitionTemplate>
 
-  abstract getRevocationRegistryDelta(
+  public abstract getRevocationRegistryDelta(
     agentContext: AgentContext,
     revocationRegistryDefinitionId: string,
     to: number,
     from: number
   ): Promise<ParseRevocationRegistryDeltaTemplate>
 
-  abstract getRevocationRegistry(
+  public abstract getRevocationRegistry(
     agentContext: AgentContext,
     revocationRegistryDefinitionId: string,
     timestamp: number

@@ -20,13 +20,19 @@
     "prepublishOnly": "yarn run build"
   },
   "dependencies": {
-    "@aries-framework/core": "^0.3.3",
-    "@types/express": "^4.17.15",
+    
     "express": "^4.17.1",
     "ffi-napi": "^4.0.3",
     "indy-sdk": "^1.16.0-dev-1636",
     "node-fetch": "^2.6.1",
     "ref-napi": "^3.0.3",
     "ws": "^7.5.3"
+  },
+  "devDependencies": {
+    "@aries-framework/core": "file:../core",
+    "@types/express": "^4.17.15"
+  },
+  "peerDependencies": {
+    "@aries-framework/core": "^0.3.3"
   }
 }

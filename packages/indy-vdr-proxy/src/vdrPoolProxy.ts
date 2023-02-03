@@ -1,13 +1,10 @@
 import type { AgentDependencies } from '@aries-framework/core'
-import type { Logger } from '@aries-framework/core/src/logger'
 import type { DidIndyNamespace } from '@aries-framework/core/src/utils'
-import type { default as Indy } from 'indy-sdk'
+import type { default as Indy, LedgerRejectResponse, LedgerReqnackResponse, LedgerResponse } from 'indy-sdk'
 import type fetch from 'node-fetch'
 import type { Response } from 'node-fetch'
 
 import { LedgerError } from '@aries-framework/core/src/modules/ledger/error'
-
-import { isLedgerRejectResponse, isLedgerReqnackResponse } from '../../indy-sdk/src/ledger/util'
 
 export interface VdrPoolConfig {
   id: string
@@ -16,15 +13,13 @@ export interface VdrPoolConfig {
   indyNamespace: DidIndyNamespace
 }
 
-export class vdrPoolProxy {
+export class VdrPoolProxy {
   private poolConfig: VdrPoolConfig
   private indy: typeof Indy
   private fetch: typeof fetch
-  private logger: Logger
-  public constructor(agentDependencies: AgentDependencies, logger: Logger, poolConfig: VdrPoolConfig) {
+  public constructor(agentDependencies: AgentDependencies, poolConfig: VdrPoolConfig) {
     this.indy = agentDependencies.indy
     this.fetch = agentDependencies.fetch
-    this.logger = logger
     this.poolConfig = poolConfig
   }
 
@@ -77,8 +72,16 @@ export class vdrPoolProxy {
   }
 }
 
+function isLedgerRejectResponse(response: LedgerResponse): response is LedgerRejectResponse {
+  return response.op === 'REJECT'
+}
+
+function isLedgerReqnackResponse(response: LedgerResponse): response is LedgerReqnackResponse {
+  return response.op === 'REQNACK'
+}
+
 export interface PublicDidRequestVDR {
   did: Indy.GetNymResponse
-  pool: vdrPoolProxy
+  pool: VdrPoolProxy
   response: Indy.LedgerReadReplyResponse
 }

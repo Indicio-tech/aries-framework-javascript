@@ -1,24 +1,28 @@
-import type { PublicDidRequestVDR, vdrPoolProxy } from './VdrPoolProxy'
-import type { CachedDidResponse } from '@aries-framework/core'
-import type { AgentContext } from '@aries-framework/core/src/agent'
+import type { PublicDidRequestVDR, VdrPoolConfig } from './VdrPoolProxy'
 import type {
+  AgentContext,
+  CachedDidResponse,
   CredentialDefinitionTemplate,
   ParseRevocationRegistryDefinitionTemplate,
   ParseRevocationRegistryDeltaTemplate,
   ParseRevocationRegistryTemplate,
   SchemaTemplate,
-} from '@aries-framework/core/src/modules/ledger/services/LedgerService'
+} from '@aries-framework/core'
 import type { default as Indy, CredDef, Schema } from 'indy-sdk'
 
-import { IndySdkError, CacheModuleConfig } from '@aries-framework/core'
-import { AgentDependencies } from '@aries-framework/core/src/agent/AgentDependencies'
-import { InjectionSymbols } from '@aries-framework/core/src/constants'
-import { Logger } from '@aries-framework/core/src/logger'
+import {
+  IndySdkError,
+  CacheModuleConfig,
+  AgentDependencies,
+  InjectionSymbols,
+  Logger,
+  LedgerService,
+  injectable,
+  inject,
+} from '@aries-framework/core'
 import { IndyIssuerService } from '@aries-framework/core/src/modules/indy'
 import { LedgerError, LedgerNotConfiguredError } from '@aries-framework/core/src/modules/ledger/error'
 import { LedgerNotFoundError } from '@aries-framework/core/src/modules/ledger/error/LedgerNotFoundError'
-import { LedgerService } from '@aries-framework/core/src/modules/ledger/services/LedgerService'
-import { injectable, inject } from '@aries-framework/core/src/plugins'
 import {
   didFromSchemaId,
   isSelfCertifiedDid,
@@ -28,31 +32,38 @@ import {
 import { isIndyError } from '@aries-framework/core/src/utils/indyError'
 import { allSettled, onlyFulfilled, onlyRejected } from '@aries-framework/core/src/utils/promises'
 
+import { VdrPoolProxy } from './VdrPoolProxy'
+
 @injectable()
 export class IndyVDRProxyService extends LedgerService {
   private indy: typeof Indy
   private logger: Logger
-  private pools: vdrPoolProxy[]
+  private pools: VdrPoolProxy[] = []
   private indyIssuer: IndyIssuerService
+  private agentDependencies: AgentDependencies
 
   public constructor(
     @inject(InjectionSymbols.AgentDependencies) agentDependencies: AgentDependencies,
     @inject(InjectionSymbols.Logger) logger: Logger,
     indyIssuer: IndyIssuerService,
-    pools: vdrPoolProxy[]
+    pools: VdrPoolConfig[]
   ) {
     super()
     this.indy = agentDependencies.indy
     this.logger = logger
     this.indyIssuer = indyIssuer
+    this.setPools(pools)
+    this.agentDependencies = agentDependencies
+  }
+
+  public setPools(poolsConfigs: VdrPoolConfig[]) {
+    const pools = poolsConfigs.map((config) => {
+      return new VdrPoolProxy(this.agentDependencies, config)
+    })
     this.pools = pools
   }
 
-  public setPools(poolsConfigs: vdrPoolProxy[]) {
-    this.pools = poolsConfigs
-  }
-
-  public addNodeToPools(node: vdrPoolProxy[]) {
+  public addNodeToPools(node: VdrPoolProxy[]) {
     this.pools = [...this.pools, ...node]
   }
 
@@ -66,6 +77,8 @@ export class IndyVDRProxyService extends LedgerService {
     try {
       this.logger.debug(`Register schema on ledger '${pool.id}' with did '${did}'`, schemaTemplate)
       const { name, attributes, version } = schemaTemplate
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       const schema = await this.indyIssuer.createSchema(agentContext, { originDid: did, name, version, attributes })
 
       const request = await this.indy.buildSchemaRequest(did, schema)
@@ -136,7 +149,8 @@ export class IndyVDRProxyService extends LedgerService {
         credentialDefinitionTemplate
       )
       const { schema, tag, signatureType, supportRevocation } = credentialDefinitionTemplate
-
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       const credentialDefinition = await this.indyIssuer.createCredentialDefinition(agentContext, {
         issuerDid: did,
         schema,
@@ -374,7 +388,7 @@ export class IndyVDRProxyService extends LedgerService {
   public async getPoolForDid(
     agentContext: AgentContext,
     did: string
-  ): Promise<{ pool: vdrPoolProxy; did: Indy.GetNymResponse }> {
+  ): Promise<{ pool: VdrPoolProxy; did: Indy.GetNymResponse }> {
     const pools = this.pools
 
     if (pools.length === 0) {
@@ -431,14 +445,14 @@ export class IndyVDRProxyService extends LedgerService {
       value = productionOrNonProduction[0].value
     }
 
-    await cache.set(agentContext, `IndySdkPoolService:${did}`, {
+    await cache.set(agentContext, `IndyVDRPool:${did}`, {
       nymResponse: value.did,
       poolId: value.pool.id,
     })
     return { pool: value.pool, did: value.did }
   }
 
-  private async getSettledDidResponsesFromPools(did: string, pools: vdrPoolProxy[]) {
+  private async getSettledDidResponsesFromPools(did: string, pools: VdrPoolProxy[]) {
     this.logger.trace(`Retrieving did '${did}' from ${pools.length} ledgers`)
     const didResponses = await allSettled(pools.map((pool) => this.getDidFromPool(did, pool)))
 
@@ -450,7 +464,7 @@ export class IndyVDRProxyService extends LedgerService {
     return { successful: successful, rejected: rejected }
   }
 
-  private async getDidFromPool(did: string, pool: vdrPoolProxy): Promise<PublicDidRequestVDR> {
+  private async getDidFromPool(did: string, pool: VdrPoolProxy): Promise<PublicDidRequestVDR> {
     try {
       this.logger.trace(`Get public did '${did}' from ledger '${pool.id}'`)
       const request = await this.indy.buildGetNymRequest(null, did)

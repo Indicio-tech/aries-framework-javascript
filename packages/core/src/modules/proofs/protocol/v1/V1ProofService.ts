@@ -83,7 +83,6 @@ import { PresentationPreview } from './models/V1PresentationPreview'
 @scoped(Lifecycle.ContainerScoped)
 export class V1ProofService extends ProofService<[IndyProofFormat]> {
   private credentialRepository: CredentialRepository
-  private ledgerService: IndyVDRProxyService
   private indyHolderService: IndyHolderService
   private indyRevocationService: IndyRevocationService
   private indyProofFormatService: IndyProofFormatService
@@ -91,7 +90,6 @@ export class V1ProofService extends ProofService<[IndyProofFormat]> {
   public constructor(
     proofRepository: ProofRepository,
     didCommMessageRepository: DidCommMessageRepository,
-    ledgerService: IndyVDRProxyService,
     @inject(InjectionSymbols.Wallet) wallet: Wallet,
     agentConfig: AgentConfig,
     connectionService: ConnectionService,
@@ -103,7 +101,6 @@ export class V1ProofService extends ProofService<[IndyProofFormat]> {
   ) {
     super(agentConfig, proofRepository, connectionService, didCommMessageRepository, wallet, eventEmitter)
     this.credentialRepository = credentialRepository
-    this.ledgerService = ledgerService
     this.wallet = wallet
     this.indyProofFormatService = formatService
     this.indyHolderService = indyHolderService

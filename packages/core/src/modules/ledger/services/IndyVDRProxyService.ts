@@ -33,7 +33,7 @@ import { VdrPoolProxy } from './VdrPoolProxy'
 export class IndyVDRProxyService extends LedgerService {
   private indy: typeof Indy
   private logger: Logger
-  private pools: VdrPoolProxy[] = []
+  private pools: VdrPoolProxy[]
   private indyIssuer: IndyIssuerService
   private agentDependencies: AgentDependencies
 
@@ -47,15 +47,18 @@ export class IndyVDRProxyService extends LedgerService {
     this.indy = agentDependencies.indy
     this.logger = logger
     this.indyIssuer = indyIssuer
-    this.setPools(pools)
+    this.pools = this.createPools(pools)
     this.agentDependencies = agentDependencies
   }
 
   public setPools(poolsConfigs: VdrPoolConfig[]) {
-    const pools = poolsConfigs.map((config) => {
+    this.pools = this.createPools(poolsConfigs)
+  }
+
+  private createPools(poolsConfigs: VdrPoolConfig[]) {
+    return poolsConfigs.map((config) => {
       return new VdrPoolProxy(this.agentDependencies, config)
     })
-    this.pools = pools
   }
 
   public addNodeToPools(node: VdrPoolProxy[]) {

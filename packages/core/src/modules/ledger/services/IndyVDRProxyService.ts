@@ -41,7 +41,14 @@ export class IndyVDRProxyService extends LedgerService {
     @inject(InjectionSymbols.AgentDependencies) agentDependencies: AgentDependencies,
     @inject(InjectionSymbols.Logger) logger: Logger,
     indyIssuer: IndyIssuerService,
-    pools: VdrPoolConfig[]
+    pools: VdrPoolConfig[] = [
+      {
+        id: 'indicio-VDR-Test',
+        url: 'https://vdr-proxy.dev.indiciotech.io',
+        isProduction: false,
+        indyNamespace: 'indicio-VDR-Test',
+      },
+    ]
   ) {
     super()
     this.indy = agentDependencies.indy

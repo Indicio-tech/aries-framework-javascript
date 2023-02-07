@@ -33,28 +33,19 @@ import { VdrPoolProxy } from './VdrPoolProxy'
 export class IndyVDRProxyService extends LedgerService {
   private indy: typeof Indy
   private logger: Logger
-  private pools: VdrPoolProxy[]
+  private pools: VdrPoolProxy[] = []
   private indyIssuer: IndyIssuerService
   private agentDependencies: AgentDependencies
 
   public constructor(
     @inject(InjectionSymbols.AgentDependencies) agentDependencies: AgentDependencies,
     @inject(InjectionSymbols.Logger) logger: Logger,
-    indyIssuer: IndyIssuerService,
-    pools: VdrPoolConfig[] = [
-      {
-        id: 'indicio-VDR-Test',
-        url: 'https://vdr-proxy.dev.indiciotech.io',
-        isProduction: false,
-        indyNamespace: 'indicio-VDR-Test',
-      },
-    ]
+    indyIssuer: IndyIssuerService
   ) {
     super()
     this.indy = agentDependencies.indy
     this.logger = logger
     this.indyIssuer = indyIssuer
-    this.pools = this.createPools(pools)
     this.agentDependencies = agentDependencies
   }
 

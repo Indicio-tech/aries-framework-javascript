@@ -55,7 +55,7 @@ export class IndyVDRProxyService extends LedgerService {
 
   private createPools(poolsConfigs: VdrPoolConfig[]) {
     return poolsConfigs.map((config) => {
-      return new VdrPoolProxy(this.agentDependencies, config)
+      return new VdrPoolProxy(this.agentDependencies, config, this.logger)
     })
   }
 

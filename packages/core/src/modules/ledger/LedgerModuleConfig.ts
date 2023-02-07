@@ -24,6 +24,13 @@ export interface LedgerModuleConfigOptions {
    */
   indyLedgers?: IndyPoolConfig[]
 
+  /**
+   * Array of configurations of indy ledgers to connect to. Each item in the list must include either the `genesisPath` or `genesisTransactions` property.
+   *
+   * The first ledger in the list will be used for writing transactions to the ledger.
+   *
+   * @default []
+   */
   vdrPoolConfigs?: VdrPoolConfig[]
 }
 

@@ -1,4 +1,5 @@
 import type { AgentDependencies } from '../../../agent/AgentDependencies'
+import type { Logger } from '../../../logger'
 import type { DidIndyNamespace } from '../../../utils'
 import type { default as Indy, LedgerRejectResponse, LedgerReqnackResponse, LedgerResponse } from 'indy-sdk'
 import type { Response } from 'node-fetch'
@@ -15,12 +16,13 @@ export interface VdrPoolConfig {
 
 export class VdrPoolProxy {
   private poolConfig: VdrPoolConfig
-  private indy: typeof Indy
+
   private fetch: typeof fetch
-  public constructor(agentDependencies: AgentDependencies, poolConfig: VdrPoolConfig) {
-    this.indy = agentDependencies.indy
+  private logger: Logger
+  public constructor(agentDependencies: AgentDependencies, poolConfig: VdrPoolConfig, logger: Logger) {
     this.fetch = agentDependencies.fetch
     this.poolConfig = poolConfig
+    this.logger = logger
   }
 
   public get id() {
@@ -32,14 +34,15 @@ export class VdrPoolProxy {
   }
 
   public get config(): VdrPoolConfig {
-    return this.config
+    return this.poolConfig
   }
 
   public get didIndyNamespace(): string {
-    return this.config.indyNamespace
+    return this.poolConfig.indyNamespace
   }
 
   public async submitRequest(request: Indy.LedgerRequest): Promise<Indy.LedgerResponse> {
+    this.logger.trace(`Sending request to ${this.poolConfig.url}`, request)
     const response: Response = await this.fetch(this.poolConfig.url + '/submit', {
       method: 'POST',
       headers: {
@@ -48,7 +51,10 @@ export class VdrPoolProxy {
       },
       body: JSON.stringify(request),
     })
-    return JSON.parse(await response.json()) as Indy.LedgerResponse
+    this.logger.trace(`Got response from ${this.poolConfig.url}`, response)
+    const text = await response.text()
+    this.logger.trace('the text is ' + text)
+    return JSON.parse(text) as Indy.LedgerResponse
   }
 
   public async submitWriteRequest(request: Indy.LedgerRequest) {

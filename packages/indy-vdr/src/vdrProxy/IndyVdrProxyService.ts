@@ -112,7 +112,6 @@ export class IndyVDRProxyService {
         response,
       })
 
-      //@ts-ignore
       return {
         schemaState: {
           state: 'finished',

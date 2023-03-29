@@ -1,8 +1,7 @@
 import type { AgentContext } from '@aries-framework/core'
-import type { default as Indy, CredDef, Schema } from 'indy-sdk'
+import type { default as Indy, Schema } from 'indy-sdk'
 
 import {
-  IndySdkError,
   CacheModuleConfig,
   AgentDependencies,
   InjectionSymbols,
@@ -12,18 +11,13 @@ import {
 } from '@aries-framework/core'
 
 import { allSettled, onlyFulfilled, onlyRejected } from '@aries-framework/core/src/utils/promises'
-
-import {
-  ParseRevocationRegistryDefinitionTemplate,
-  ParseRevocationRegistryDeltaTemplate,
-  ParseRevocationRegistryTemplate,
-} from 'packages/core/build'
 import { CachedDidResponse } from '../pool'
 import { isSelfCertifiedDid } from '../utils/did'
 import {
   AnonCredsRevocationRegistryDefinition,
   GetCredentialDefinitionReturn,
   GetRevocationRegistryDefinitionReturn,
+  GetRevocationStatusListReturn,
   RegisterCredentialDefinitionOptions,
   RegisterCredentialDefinitionReturn,
   RegisterSchemaOptions,
@@ -42,13 +36,17 @@ import {
 import {
   CredentialDefinitionRequest,
   GetCredentialDefinitionRequest,
+  GetNymRequest,
   GetRevocationRegistryDefinitionRequest,
+  GetRevocationRegistryDeltaRequest,
   GetSchemaRequest,
   GetTransactionRequest,
   IndyVdrRequest,
   SchemaRequest,
 } from '@hyperledger/indy-vdr-shared'
-import { VdrPoolConfig, VdrPoolProxy } from './VdrPoolProxy'
+import { PublicDidRequestVDR, VdrPoolConfig, VdrPoolProxy } from './VdrPoolProxy'
+import { anonCredsRevocationStatusListFromIndyVdr } from '../anoncreds/utils/transform'
+import { IndyVdrError, IndyVdrNotFoundError, IndyVdrNotConfiguredError } from '../error'
 
 @injectable()
 export class IndyVDRProxyService {
@@ -502,105 +500,106 @@ export class IndyVDRProxyService {
     }
   }
 
-  public async getRevocationRegistryDelta(
+  public async getRevocationStatusList(
     agentContext: AgentContext,
-    revocationRegistryDefinitionId: string,
-    to: number,
-    from: number
-  ): Promise<ParseRevocationRegistryDeltaTemplate> {
-    const did = didFromRevocationRegistryDefinitionId(revocationRegistryDefinitionId)
+    revocationRegistryId: string,
+    timestamp: number
+  ): Promise<GetRevocationStatusListReturn> {
+    const { did, namespaceIdentifier, schemaSeqNo, credentialDefinitionTag, revocationRegistryTag } =
+      parseRevocationRegistryId(revocationRegistryId)
     const { pool } = await this.getPoolForDid(agentContext, did)
 
     this.logger.debug(
-      `Using ledger '${pool.id}' to retrieve revocation registry delta with revocation registry definition id: '${revocationRegistryDefinitionId}'`,
-      {
-        to,
-        from,
-      }
+      `Using ledger '${pool.didIndyNamespace}' to retrieve revocation registry deltas with revocation registry definition id '${revocationRegistryId}' until ${timestamp}`
     )
 
     try {
-      const request = await this.indy.buildGetRevocRegDeltaRequest(null, revocationRegistryDefinitionId, from, to)
+      const legacyRevocationRegistryId = getLegacyRevocationRegistryId(
+        namespaceIdentifier,
+        schemaSeqNo,
+        credentialDefinitionTag,
+        revocationRegistryTag
+      )
+      const request = new GetRevocationRegistryDeltaRequest({
+        revocationRegistryId: legacyRevocationRegistryId,
+        toTs: timestamp,
+      })
 
       this.logger.trace(
-        `Submitting get revocation registry delta request for revocation registry '${revocationRegistryDefinitionId}' to ledger`
+        `Submitting get revocation registry delta request for revocation registry '${revocationRegistryId}' to ledger`
       )
 
       const response = await pool.submitReadRequest(request)
-      this.logger.trace(
-        `Got revocation registry delta unparsed-response '${revocationRegistryDefinitionId}' from ledger`,
-        {
-          response,
-        }
+      this.logger.debug(
+        `Got revocation registry deltas '${revocationRegistryId}' until timestamp ${timestamp} from ledger`
       )
 
-      const [, revocationRegistryDelta, deltaTimestamp] = await this.indy.parseGetRevocRegDeltaResponse(response)
+      const { revocationRegistryDefinition, resolutionMetadata, revocationRegistryDefinitionMetadata } =
+        await this.getRevocationRegistryDefinition(agentContext, revocationRegistryId)
 
-      this.logger.debug(`Got revocation registry delta '${revocationRegistryDefinitionId}' from ledger`, {
-        revocationRegistryDelta,
-        deltaTimestamp,
-        to,
-        from,
-      })
+      if (
+        !revocationRegistryDefinition ||
+        !revocationRegistryDefinitionMetadata.issuanceType ||
+        typeof revocationRegistryDefinitionMetadata.issuanceType !== 'string'
+      ) {
+        return {
+          resolutionMetadata: {
+            error: `error resolving revocation registry definition with id ${revocationRegistryId}: ${resolutionMetadata.error} ${resolutionMetadata.message}`,
+          },
+          revocationStatusListMetadata: {
+            didIndyNamespace: pool.didIndyNamespace,
+          },
+        }
+      }
 
-      return { revocationRegistryDelta, deltaTimestamp }
+      const isIssuanceByDefault = revocationRegistryDefinitionMetadata.issuanceType === 'ISSUANCE_BY_DEFAULT'
+
+      if (!response.result.data) {
+        return {
+          resolutionMetadata: {
+            error: 'notFound',
+            message: `Error retrieving revocation registry delta '${revocationRegistryId}' from ledger, potentially revocation interval ends before revocation registry creation`,
+          },
+          revocationStatusListMetadata: {},
+        }
+      }
+
+      const revocationRegistryDelta = {
+        accum: response.result.data.value.accum_to.value.accum,
+        issued: response.result.data.value.issued,
+        revoked: response.result.data.value.revoked,
+      }
+
+      return {
+        resolutionMetadata: {},
+        revocationStatusList: anonCredsRevocationStatusListFromIndyVdr(
+          revocationRegistryId,
+          revocationRegistryDefinition,
+          revocationRegistryDelta,
+          response.result.data.value.accum_to.txnTime,
+          isIssuanceByDefault
+        ),
+        revocationStatusListMetadata: {
+          didIndyNamespace: pool.didIndyNamespace,
+        },
+      }
     } catch (error) {
       this.logger.error(
-        `Error retrieving revocation registry delta '${revocationRegistryDefinitionId}' from ledger, potentially revocation interval ends before revocation registry creation?"`,
+        `Error retrieving revocation registry delta '${revocationRegistryId}' from ledger, potentially revocation interval ends before revocation registry creation?"`,
         {
           error,
-          revocationRegistryId: revocationRegistryDefinitionId,
+          revocationRegistryId: revocationRegistryId,
           pool: pool.id,
         }
       )
-      throw error
-    }
-  }
 
-  public async getRevocationRegistry(
-    agentContext: AgentContext,
-    revocationRegistryDefinitionId: string,
-    timestamp: number
-  ): Promise<ParseRevocationRegistryTemplate> {
-    //TODO - implement a cache
-    const did = didFromRevocationRegistryDefinitionId(revocationRegistryDefinitionId)
-    const { pool } = await this.getPoolForDid(agentContext, did)
-
-    this.logger.debug(
-      `Using ledger '${pool.id}' to retrieve revocation registry accumulated state with revocation registry definition id: '${revocationRegistryDefinitionId}'`,
-      {
-        timestamp,
+      return {
+        resolutionMetadata: {
+          error: 'notFound',
+          message: `Error retrieving revocation registry delta '${revocationRegistryId}' from ledger, potentially revocation interval ends before revocation registry creation: ${error.message}`,
+        },
+        revocationStatusListMetadata: {},
       }
-    )
-
-    try {
-      const request = await this.indy.buildGetRevocRegRequest(null, revocationRegistryDefinitionId, timestamp)
-
-      this.logger.trace(
-        `Submitting get revocation registry request for revocation registry '${revocationRegistryDefinitionId}' to ledger`
-      )
-      const response = await pool.submitReadRequest(request)
-      this.logger.trace(
-        `Got un-parsed revocation registry '${revocationRegistryDefinitionId}' from ledger '${pool.id}'`,
-        {
-          response,
-        }
-      )
-
-      const [, revocationRegistry, ledgerTimestamp] = await this.indy.parseGetRevocRegResponse(response)
-      this.logger.debug(`Got revocation registry '${revocationRegistryDefinitionId}' from ledger`, {
-        ledgerTimestamp,
-        revocationRegistry,
-      })
-
-      return { revocationRegistry, ledgerTimestamp }
-    } catch (error) {
-      this.logger.error(`Error retrieving revocation registry '${revocationRegistryDefinitionId}' from ledger`, {
-        error,
-        revocationRegistryId: revocationRegistryDefinitionId,
-        pool: pool.id,
-      })
-      throw error
     }
   }
 
@@ -617,7 +616,7 @@ export class IndyVDRProxyService {
   public async getPoolForDid(
     agentContext: AgentContext,
     did: string
-  ): Promise<{ pool: VdrPoolProxy; did: Indy.GetNymResponse }> {
+  ): Promise<{ pool: VdrPoolProxy; nymResponse?: CachedDidResponse['nymResponse'] }> {
     const pools = this.pools
 
     if (pools.length === 0) {
@@ -627,29 +626,30 @@ export class IndyVDRProxyService {
     }
 
     const cache = agentContext.dependencyManager.resolve(CacheModuleConfig).cache
+    const cacheKey = `IndyVdrProxyService:${did}`
 
-    const cachedNymResponse = await cache.get<CachedDidResponse>(agentContext, `IndyVDRPool:${did}`)
-    const pool = this.pools.find((pool) => pool.id === cachedNymResponse?.poolId)
+    const cachedNymResponse = await cache.get<CachedDidResponse>(agentContext, cacheKey)
+    const pool = this.pools.find((pool) => pool.didIndyNamespace === cachedNymResponse?.indyNamespace)
 
     if (cachedNymResponse && pool) {
       this.logger.trace(`Found ledger id '${pool.id}' for did '${did}' in cache`)
-      return { did: cachedNymResponse.nymResponse, pool }
+      return { nymResponse: cachedNymResponse.nymResponse, pool }
     }
 
     const { successful, rejected } = await this.getSettledDidResponsesFromPools(did, pools)
 
     if (successful.length === 0) {
-      const allNotFound = rejected.every((e) => e.reason instanceof LedgerNotFoundError)
-      const rejectedOtherThanNotFound = rejected.filter((e) => !(e.reason instanceof LedgerNotFoundError))
+      const allNotFound = rejected.every((e) => e.reason instanceof IndyVdrNotFoundError)
+      const rejectedOtherThanNotFound = rejected.filter((e) => !(e.reason instanceof IndyVdrNotFoundError))
 
       // All ledgers returned response that the did was not found
       if (allNotFound) {
-        throw new Error(`Did '${did}' not found on any of the ledgers (total ${this.pools.length}).`)
+        throw new IndyVdrNotFoundError(`Did '${did}' not found on any of the ledgers (total ${this.pools.length}).`)
       }
 
       // one or more of the ledgers returned an unknown error
-      throw new LedgerError(
-        `Unknown error retrieving did '${did}' from '${rejectedOtherThanNotFound.length}' of '${pools.length}' ledgers`,
+      throw new IndyVdrError(
+        `Unknown error retrieving did '${did}' from '${rejectedOtherThanNotFound.length}' of '${pools.length}' ledgers. ${rejectedOtherThanNotFound[0].reason}`,
         { cause: rejectedOtherThanNotFound[0].reason }
       )
     }
@@ -658,7 +658,7 @@ export class IndyVDRProxyService {
     // We take the first self certifying DID as we take the order in the
     // indyLedgers config as the order of preference of ledgers
     let value = successful.find((response) =>
-      isSelfCertifiedDid(response.value.did.did, response.value.did.verkey)
+      isSelfCertifiedDid(response.value.did.nymResponse.did, response.value.did.nymResponse.verkey)
     )?.value
 
     if (!value) {
@@ -674,11 +674,14 @@ export class IndyVDRProxyService {
       value = productionOrNonProduction[0].value
     }
 
-    await cache.set(agentContext, `IndyVDRPool:${did}`, {
-      nymResponse: value.did,
-      poolId: value.pool.id,
+    await cache.set(agentContext, cacheKey, {
+      nymResponse: {
+        did: value.did.nymResponse.did,
+        verkey: value.did.nymResponse.verkey,
+      },
+      indyNamespace: value.did.indyNamespace,
     })
-    return { pool: value.pool, did: value.did }
+    return { pool: value.pool, nymResponse: value.did.nymResponse }
   }
 
   private async getSettledDidResponsesFromPools(did: string, pools: VdrPoolProxy[]) {
@@ -696,16 +699,20 @@ export class IndyVDRProxyService {
   private async getDidFromPool(did: string, pool: VdrPoolProxy): Promise<PublicDidRequestVDR> {
     try {
       this.logger.trace(`Get public did '${did}' from ledger '${pool.id}'`)
-      const request = await this.indy.buildGetNymRequest(null, did)
+      const request = new GetNymRequest({ dest: did })
 
       this.logger.trace(`Submitting get did request for did'${did}' to ledger '${pool.id}'`)
       const response = await pool.submitReadRequest(request)
 
-      const result = await this.indy.parseGetNymResponse(response)
+      if (!response.result.data) {
+        throw new IndyVdrNotFoundError(`Did ${did} not found on indy pool with namespace ${pool.didIndyNamespace}`)
+      }
+
+      const result = JSON.parse(response.result.data)
       this.logger.trace(`Retieved did '${did}' from ledger '${pool.id}'`, result)
 
       return {
-        did: result,
+        did: { nymResponse: { did: result.dest, verkey: result.verkey }, indyNamespace: pool.didIndyNamespace },
         pool,
         response,
       }
@@ -714,11 +721,8 @@ export class IndyVDRProxyService {
         error,
         did,
       })
-      if (isIndyError(error, 'LedgerNotFound')) {
-        throw new Error(`Did '${did}' not found on ledger ${pool.id}`)
-      } else {
-        throw isIndyError(error) ? new IndySdkError(error) : error
-      }
+
+      throw error
     }
   }
 

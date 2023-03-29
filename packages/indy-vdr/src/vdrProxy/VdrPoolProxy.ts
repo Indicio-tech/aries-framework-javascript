@@ -1,5 +1,5 @@
 import type { AgentDependencies } from '@aries-framework/core'
-import { IndyVdrRequest, RequestResponseType } from '@hyperledger/indy-vdr-shared'
+import { GetNymResponse, IndyVdrRequest, RequestResponseType } from '@hyperledger/indy-vdr-shared'
 import type { default as Indy, LedgerRejectResponse, LedgerReqnackResponse, LedgerResponse } from 'indy-sdk'
 import type fetch from 'node-fetch'
 import type { Response } from 'node-fetch'
@@ -8,6 +8,14 @@ export interface VdrPoolConfig {
   id: string
   url: string
   isProduction: boolean
+  indyNamespace: string
+}
+
+export interface CachedDidResponse {
+  nymResponse: {
+    did: string
+    verkey: string
+  }
   indyNamespace: string
 }
 
@@ -69,7 +77,7 @@ function isLedgerReqnackResponse(response: LedgerResponse): response is LedgerRe
 }
 
 export interface PublicDidRequestVDR {
-  did: Indy.GetNymResponse
+  did: CachedDidResponse
   pool: VdrPoolProxy
-  response: Indy.LedgerReadReplyResponse
+  response: GetNymResponse
 }

@@ -1,5 +1,4 @@
 import type { AgentContext } from '@aries-framework/core'
-import type { default as Indy, Schema } from 'indy-sdk'
 
 import {
   CacheModuleConfig,
@@ -21,6 +20,7 @@ import {
   RegisterCredentialDefinitionOptions,
   RegisterCredentialDefinitionReturn,
   RegisterSchemaOptions,
+  RegisterSchemaReturn,
 } from '@aries-framework/anoncreds'
 import { parseIndyDid } from '../dids/didIndyUtil'
 import {
@@ -53,15 +53,12 @@ export class IndyVDRProxyService {
   private logger: Logger
   private pools: VdrPoolProxy[] = []
   private agentDependencies: AgentDependencies
-  private indy: typeof Indy
 
   public constructor(
     @inject(InjectionSymbols.AgentDependencies) agentDependencies: AgentDependencies,
     @inject(InjectionSymbols.Logger) logger: Logger,
-    pools: VdrPoolConfig[],
-    indy: typeof Indy
+    pools: VdrPoolConfig[]
   ) {
-    this.indy = indy
     this.logger = logger
     this.setPools(pools)
     this.agentDependencies = agentDependencies
@@ -82,13 +79,19 @@ export class IndyVDRProxyService {
     agentContext: AgentContext,
     did: string,
     options: RegisterSchemaOptions
-  ): Promise<Schema> {
-    const pool = this.getPoolForNamespace()
-
+  ): Promise<RegisterSchemaReturn> {
     try {
+      const { namespaceIdentifier, namespace } = parseIndyDid(options.schema.issuerId)
+      const pool = this.getPoolForNamespace(namespace)
       this.logger.debug(`Register schema on ledger '${pool.id}' with did '${did}'`, options)
-      const { namespaceIdentifier } = parseIndyDid(options.schema.issuerId)
       const legacySchemaId = getLegacySchemaId(namespaceIdentifier, options.schema.name, options.schema.version)
+
+      const didIndySchemaId = getDidIndySchemaId(
+        namespace,
+        namespaceIdentifier,
+        options.schema.name,
+        options.schema.version
+      )
 
       const schema = {
         id: legacySchemaId,
@@ -109,17 +112,41 @@ export class IndyVDRProxyService {
         response,
       })
 
-      schema.seqNo = response.result.txnMetadata.seqNo
       //@ts-ignore
-      return schema
+      return {
+        schemaState: {
+          state: 'finished',
+          schema: {
+            attrNames: options.schema.attrNames,
+            issuerId: options.schema.issuerId,
+            name: options.schema.name,
+            version: options.schema.version,
+          },
+          schemaId: didIndySchemaId,
+        },
+        registrationMetadata: {},
+        schemaMetadata: {
+          // NOTE: the seqNo is required by the indy-sdk even though not present in AnonCreds v1.
+          // For this reason we return it in the metadata.
+          indyLedgerSeqNo: response.result.txnMetadata.seqNo,
+        },
+      }
     } catch (error) {
-      this.logger.error(`Error registering schema for did '${did}' on ledger '${pool.id}'`, {
+      this.logger.error(`Error registering schema for did '${did}'`, {
         error,
         did,
         options,
       })
 
-      throw error
+      return {
+        schemaMetadata: {},
+        registrationMetadata: {},
+        schemaState: {
+          state: 'failed',
+          schema: options.schema,
+          reason: `unknownError: ${error.message}`,
+        },
+      }
     }
   }
 

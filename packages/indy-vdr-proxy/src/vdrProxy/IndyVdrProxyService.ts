@@ -10,8 +10,8 @@ import {
 } from '@aries-framework/core'
 
 import { allSettled, onlyFulfilled, onlyRejected } from '@aries-framework/core/src/utils/promises'
-import { CachedDidResponse } from '../pool'
-import { isSelfCertifiedDid } from '../utils/did'
+import { CachedDidResponse } from '../../../indy-vdr/src/pool'
+import { isSelfCertifiedDid } from '../../../indy-vdr/src/utils/did'
 import {
   AnonCredsRevocationRegistryDefinition,
   GetCredentialDefinitionReturn,
@@ -22,7 +22,7 @@ import {
   RegisterSchemaOptions,
   RegisterSchemaReturn,
 } from '@aries-framework/anoncreds'
-import { parseIndyDid } from '../dids/didIndyUtil'
+import { parseIndyDid } from '../../../indy-vdr/src/dids/didIndyUtil'
 import {
   getDidIndyCredentialDefinitionId,
   getDidIndySchemaId,
@@ -32,7 +32,7 @@ import {
   parseCredentialDefinitionId,
   parseRevocationRegistryId,
   parseSchemaId,
-} from '../anoncreds/utils/identifiers'
+} from '../../../indy-vdr/src/anoncreds/utils/identifiers'
 import {
   CredentialDefinitionRequest,
   GetCredentialDefinitionRequest,
@@ -45,8 +45,8 @@ import {
   SchemaRequest,
 } from '@hyperledger/indy-vdr-shared'
 import { PublicDidRequestVDR, VdrPoolConfig, VdrPoolProxy } from './VdrPoolProxy'
-import { anonCredsRevocationStatusListFromIndyVdr } from '../anoncreds/utils/transform'
-import { IndyVdrError, IndyVdrNotFoundError, IndyVdrNotConfiguredError } from '../error'
+import { anonCredsRevocationStatusListFromIndyVdr } from '../../../indy-vdr/src/anoncreds/utils/transform'
+import { IndyVdrError, IndyVdrNotFoundError, IndyVdrNotConfiguredError } from '../../../indy-vdr/src/error'
 
 @injectable()
 export class IndyVDRProxyService {
@@ -73,6 +73,10 @@ export class IndyVDRProxyService {
 
   public addNodeToPools(node: VdrPoolProxy[]) {
     this.pools = [...this.pools, ...node]
+  }
+
+  public get getPools() {
+    return this.pools
   }
 
   public async registerSchema(

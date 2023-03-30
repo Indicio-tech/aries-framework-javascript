@@ -10,43 +10,13 @@ import {
 } from '@aries-framework/core'
 
 import { allSettled, onlyFulfilled, onlyRejected } from '@aries-framework/core/src/utils/promises'
-import { CachedDidResponse } from '../../../indy-vdr/src/pool'
-import { isSelfCertifiedDid } from '../../../indy-vdr/src/utils/did'
-import {
-  AnonCredsRevocationRegistryDefinition,
-  GetCredentialDefinitionReturn,
-  GetRevocationRegistryDefinitionReturn,
-  GetRevocationStatusListReturn,
-  RegisterCredentialDefinitionOptions,
-  RegisterCredentialDefinitionReturn,
-  RegisterSchemaOptions,
-  RegisterSchemaReturn,
-} from '@aries-framework/anoncreds'
-import { parseIndyDid } from '../../../indy-vdr/src/dids/didIndyUtil'
-import {
-  getDidIndyCredentialDefinitionId,
-  getDidIndySchemaId,
-  getLegacyCredentialDefinitionId,
-  getLegacyRevocationRegistryId,
-  getLegacySchemaId,
-  parseCredentialDefinitionId,
-  parseRevocationRegistryId,
-  parseSchemaId,
-} from '../../../indy-vdr/src/anoncreds/utils/identifiers'
-import {
-  CredentialDefinitionRequest,
-  GetCredentialDefinitionRequest,
-  GetNymRequest,
-  GetRevocationRegistryDefinitionRequest,
-  GetRevocationRegistryDeltaRequest,
-  GetSchemaRequest,
-  GetTransactionRequest,
-  IndyVdrRequest,
-  SchemaRequest,
-} from '@hyperledger/indy-vdr-shared'
+import { CachedDidResponse } from './VdrPoolProxy'
+import { isSelfCertifiedDid } from '../utils/did'
+
+import { GetNymRequest, IndyVdrRequest } from '@hyperledger/indy-vdr-shared'
 import { PublicDidRequestVDR, VdrPoolConfig, VdrPoolProxy } from './VdrPoolProxy'
-import { anonCredsRevocationStatusListFromIndyVdr } from '../../../indy-vdr/src/anoncreds/utils/transform'
-import { IndyVdrError, IndyVdrNotFoundError, IndyVdrNotConfiguredError } from '../../../indy-vdr/src/error'
+import { IndyVdrError, IndyVdrNotFoundError } from '../error'
+import { DID_INDY_REGEX } from '../utils/did'
 
 @injectable()
 export class IndyVDRProxyService {
@@ -79,560 +49,6 @@ export class IndyVDRProxyService {
     return this.pools
   }
 
-  public async registerSchema(
-    agentContext: AgentContext,
-    did: string,
-    options: RegisterSchemaOptions
-  ): Promise<RegisterSchemaReturn> {
-    try {
-      const { namespaceIdentifier, namespace } = parseIndyDid(options.schema.issuerId)
-      const pool = this.getPoolForNamespace(namespace)
-      this.logger.debug(`Register schema on ledger '${pool.id}' with did '${did}'`, options)
-      const legacySchemaId = getLegacySchemaId(namespaceIdentifier, options.schema.name, options.schema.version)
-
-      const didIndySchemaId = getDidIndySchemaId(
-        namespace,
-        namespaceIdentifier,
-        options.schema.name,
-        options.schema.version
-      )
-
-      const schema = {
-        id: legacySchemaId,
-        name: options.schema.name,
-        ver: '1.0' as '1.0',
-        version: options.schema.version,
-        attrNames: options.schema.attrNames,
-        seqNo: undefined as number | undefined,
-      }
-
-      const request = new SchemaRequest({
-        submitterDid: namespaceIdentifier,
-        schema: schema,
-      })
-
-      const response = await pool.submitWriteRequest(request)
-      this.logger.debug(`Registered schema '${legacySchemaId}' on ledger '${pool.id}'`, {
-        response,
-      })
-
-      return {
-        schemaState: {
-          state: 'finished',
-          schema: {
-            attrNames: options.schema.attrNames,
-            issuerId: options.schema.issuerId,
-            name: options.schema.name,
-            version: options.schema.version,
-          },
-          schemaId: didIndySchemaId,
-        },
-        registrationMetadata: {},
-        schemaMetadata: {
-          // NOTE: the seqNo is required by the indy-sdk even though not present in AnonCreds v1.
-          // For this reason we return it in the metadata.
-          indyLedgerSeqNo: response.result.txnMetadata.seqNo,
-        },
-      }
-    } catch (error) {
-      this.logger.error(`Error registering schema for did '${did}'`, {
-        error,
-        did,
-        options,
-      })
-
-      return {
-        schemaMetadata: {},
-        registrationMetadata: {},
-        schemaState: {
-          state: 'failed',
-          schema: options.schema,
-          reason: `unknownError: ${error.message}`,
-        },
-      }
-    }
-  }
-
-  public async getSchema(agentContext: AgentContext, schemaId: string) {
-    const { did, namespaceIdentifier, schemaName, schemaVersion } = parseSchemaId(schemaId)
-    const { pool } = await this.getPoolForDid(agentContext, did)
-
-    try {
-      this.logger.debug(`Getting schema '${schemaId}' from ledger '${pool.id}'`)
-
-      const legacySchemaId = getLegacySchemaId(namespaceIdentifier, schemaName, schemaVersion)
-      const request = new GetSchemaRequest({ schemaId: legacySchemaId })
-
-      this.logger.trace(`Submitting get schema request for schema '${schemaId}' to ledger '${pool.id}'`)
-      const response = await pool.submitReadRequest(request)
-
-      this.logger.trace(`Got un-parsed schema '${schemaId}' from ledger '${pool.id}'`, {
-        response,
-      })
-
-      if (!('attr_names' in response.result.data)) {
-        agentContext.config.logger.error(`Error retrieving schema '${schemaId}'`)
-
-        return {
-          schemaId,
-          resolutionMetadata: {
-            error: 'notFound',
-            message: `unable to find schema with id ${schemaId}`,
-          },
-          schemaMetadata: {},
-        }
-      }
-
-      return {
-        schema: {
-          attrNames: response.result.data.attr_names,
-          name: response.result.data.name,
-          version: response.result.data.version,
-          issuerId: did,
-        },
-        schemaId,
-        resolutionMetadata: {},
-        schemaMetadata: {
-          didIndyNamespace: pool.didIndyNamespace,
-          // NOTE: the seqNo is required by the indy-sdk even though not present in AnonCreds v1.
-          // For this reason we return it in the metadata.
-          indyLedgerSeqNo: response.result.seqNo,
-        },
-      }
-    } catch (error) {
-      this.logger.error(`Error retrieving schema '${schemaId}' from ledger '${pool.id}'`, {
-        error,
-        schemaId,
-      })
-    }
-    return {
-      schemaId,
-      resolutionMetadata: {
-        error: 'notFound',
-      },
-      schemaMetadata: {},
-    }
-  }
-
-  private async fetchIndySchemaWithSeqNo(agentContext: AgentContext, seqNo: number, did: string) {
-    const pool = this.getPoolForNamespace()
-
-    agentContext.config.logger.debug(`Getting transaction with seqNo '${seqNo}' from ledger '${pool.didIndyNamespace}'`)
-    // ledgerType 1 is domain ledger
-    const request = new GetTransactionRequest({ ledgerType: 1, seqNo })
-
-    agentContext.config.logger.trace(`Submitting get transaction request to ledger '${pool.didIndyNamespace}'`)
-    const response = await pool.submitReadRequest(request)
-
-    if (response.result.data?.txn.type !== '101') {
-      agentContext.config.logger.error(`Could not get schema from ledger for seq no ${seqNo}'`)
-      return null
-    }
-
-    const schema = response.result.data?.txn.data as {
-      data: {
-        attr_names: string[]
-        version: string
-        name: string
-      }
-    }
-
-    const schemaId = getLegacySchemaId(did, schema.data.name, schema.data.version)
-
-    return {
-      schema: {
-        schemaId,
-        attr_name: schema.data.attr_names,
-        name: schema.data.name,
-        version: schema.data.version,
-        issuerId: did,
-        seqNo,
-      },
-      indyNamespace: pool.didIndyNamespace,
-    }
-  }
-
-  public async registerCredentialDefinition(
-    agentContext: AgentContext,
-
-    did: string,
-
-    options: RegisterCredentialDefinitionOptions
-  ): Promise<RegisterCredentialDefinitionReturn> {
-    const pool = this.getPoolForNamespace()
-
-    try {
-      this.logger.debug(`Registering credential definition on ledger '${pool.id}' with did '${did}'`, options)
-      const { schema, schemaMetadata, resolutionMetadata } = await this.getSchema(
-        agentContext,
-        options.credentialDefinition.schemaId
-      )
-      const { namespaceIdentifier, namespace } = parseIndyDid(options.credentialDefinition.issuerId)
-
-      if (!schema || !schemaMetadata.indyLedgerSeqNo || typeof schemaMetadata.indyLedgerSeqNo != 'number') {
-        return {
-          registrationMetadata: {},
-          credentialDefinitionMetadata: {
-            didIndyNamespace: pool.didIndyNamespace,
-          },
-          credentialDefinitionState: {
-            credentialDefinition: options.credentialDefinition,
-            state: 'failed',
-            reason: `error resolving schema with id ${options.credentialDefinition.schemaId}: ${resolutionMetadata.error} ${resolutionMetadata.message}`,
-          },
-        }
-      }
-
-      const legacyCredentialDefinitionId = getLegacyCredentialDefinitionId(
-        options.credentialDefinition.issuerId,
-        schemaMetadata.indyLedgerSeqNo,
-        options.credentialDefinition.tag
-      )
-      const didIndyCredentialDefinitionId = getDidIndyCredentialDefinitionId(
-        namespace,
-        namespaceIdentifier,
-        schemaMetadata.indyLedgerSeqNo,
-        options.credentialDefinition.tag
-      )
-
-      const request = new CredentialDefinitionRequest({
-        submitterDid: namespaceIdentifier,
-        credentialDefinition: {
-          ver: '1.0',
-          id: legacyCredentialDefinitionId,
-          schemaId: `${schemaMetadata.indyLedgerSeqNo}`,
-          type: 'CL',
-          tag: options.credentialDefinition.tag,
-          value: options.credentialDefinition.value,
-        },
-      })
-
-      const response = await pool.submitWriteRequest(request)
-
-      this.logger.debug(
-        `Registered credential definition '${options.credentialDefinition.schemaId}' on ledger '${pool.id}'`,
-        {
-          response,
-          credentialDefinition: options.credentialDefinition,
-        }
-      )
-
-      return {
-        credentialDefinitionMetadata: {},
-        credentialDefinitionState: {
-          credentialDefinition: options.credentialDefinition,
-          credentialDefinitionId: didIndyCredentialDefinitionId,
-          state: 'finished',
-        },
-        registrationMetadata: {},
-      }
-    } catch (error) {
-      this.logger.error(
-        `Error registering credential definition for schema '${options.credentialDefinition.schemaId}' on ledger '${pool.id}'`,
-        {
-          error,
-          did,
-          CredentialDefinition: options.credentialDefinition,
-        }
-      )
-
-      return {
-        credentialDefinitionMetadata: {},
-        registrationMetadata: {},
-        credentialDefinitionState: {
-          credentialDefinition: options.credentialDefinition,
-          state: 'failed',
-          reason: `unknownError: ${error.message}`,
-        },
-      }
-    }
-  }
-
-  public async getCredentialDefinition(
-    agentContext: AgentContext,
-    credentialDefinitionId: string
-  ): Promise<GetCredentialDefinitionReturn> {
-    const { did, namespaceIdentifier, schemaSeqNo, tag } = parseCredentialDefinitionId(credentialDefinitionId)
-    const { pool } = await this.getPoolForDid(agentContext, did)
-
-    this.logger.debug(`Using ledger '${pool.id}' to retrieve credential definition '${credentialDefinitionId}'`)
-
-    try {
-      const legacyCredentialDefinitionId = getLegacyCredentialDefinitionId(namespaceIdentifier, schemaSeqNo, tag)
-      const request = new GetCredentialDefinitionRequest({
-        credentialDefinitionId: legacyCredentialDefinitionId,
-      })
-
-      this.logger.trace(
-        `Submitting get credential definition request for credential definition '${credentialDefinitionId}' to leder '${pool.id}'`
-      )
-
-      const response = await pool.submitReadRequest(request)
-      this.logger.trace(
-        `Got un-parsed credential definition '${credentialDefinitionId}' from ledger '${pool.id}`,
-        response
-      )
-
-      const schema = await this.fetchIndySchemaWithSeqNo(agentContext, response.result.ref, namespaceIdentifier)
-
-      if (!schema || !response.result.data) {
-        this.logger.error(`Error retrieving credential definition '${credentialDefinitionId}'`)
-
-        return {
-          credentialDefinitionId,
-          credentialDefinitionMetadata: {},
-          resolutionMetadata: {
-            error: 'notFound',
-            message: `unable to resolve credential definition with id ${credentialDefinitionId}`,
-          },
-        }
-      }
-      const schemaId = credentialDefinitionId.startsWith('did:indy')
-        ? getDidIndySchemaId(pool.didIndyNamespace, namespaceIdentifier, schema.schema.name, schema.schema.version)
-        : schema.schema.schemaId
-
-      return {
-        credentialDefinitionId: credentialDefinitionId,
-        credentialDefinition: {
-          issuerId: did,
-          schemaId,
-          tag: response.result.tag,
-          type: 'CL',
-          value: response.result.data,
-        },
-        credentialDefinitionMetadata: {
-          didIndyNamespace: pool.didIndyNamespace,
-        },
-        resolutionMetadata: {},
-      }
-    } catch (error) {
-      this.logger.error(`Error retrieving credential definition '${credentialDefinitionId}' from ledger '${pool.id}'`, {
-        error,
-        credentialDefinitionId,
-        pool: pool.id,
-      })
-
-      return {
-        credentialDefinitionId,
-        credentialDefinitionMetadata: {},
-        resolutionMetadata: {
-          error: 'notFound',
-          message: `unable to resolve credential definition: ${error.message}`,
-        },
-      }
-    }
-  }
-
-  public async getRevocationRegistryDefinition(
-    agentContext: AgentContext,
-    revocationRegistryDefinitionId: string
-  ): Promise<GetRevocationRegistryDefinitionReturn> {
-    const { did, namespaceIdentifier, credentialDefinitionTag, revocationRegistryTag, schemaSeqNo } =
-      parseRevocationRegistryId(revocationRegistryDefinitionId)
-    const { pool } = await this.getPoolForDid(agentContext, did)
-
-    this.logger.debug(
-      `Using ledger '${pool.id}' to retrieve revocation registry definition '${revocationRegistryDefinitionId}'`
-    )
-    try {
-      const legacyRevocationRegistryId = getLegacyRevocationRegistryId(
-        namespaceIdentifier,
-        schemaSeqNo,
-        credentialDefinitionTag,
-        revocationRegistryTag
-      )
-      const request = new GetRevocationRegistryDefinitionRequest({
-        revocationRegistryId: legacyRevocationRegistryId,
-      })
-
-      this.logger.trace(
-        `Submitting get revocation registry definition request for revocation registry definition '${revocationRegistryDefinitionId}' to ledger`
-      )
-      const response = await pool.submitReadRequest(request)
-
-      if (!response.result.data) {
-        this.logger.error(
-          `Error retrieving revocation registry definition '${revocationRegistryDefinitionId}' from ledger`,
-          {
-            revocationRegistryDefinitionId,
-          }
-        )
-
-        return {
-          resolutionMetadata: {
-            error: 'notFound',
-            message: `unable to resolve revocation registry definition`,
-          },
-          revocationRegistryDefinitionId,
-          revocationRegistryDefinitionMetadata: {},
-        }
-      }
-      this.logger.trace(
-        `Got revocation registry definition '${revocationRegistryDefinitionId}' from ledger '${pool.didIndyNamespace}'`,
-        {
-          response,
-        }
-      )
-
-      const credentialDefinitionId = revocationRegistryDefinitionId.startsWith('did:indy:')
-        ? getDidIndyCredentialDefinitionId(
-            pool.didIndyNamespace,
-            namespaceIdentifier,
-            schemaSeqNo,
-            credentialDefinitionTag
-          )
-        : getLegacyCredentialDefinitionId(namespaceIdentifier, schemaSeqNo, credentialDefinitionTag)
-
-      const revocationRegistryDefinition = {
-        issuerId: did,
-        revocDefType: response.result.data.revocDefType,
-        value: {
-          maxCredNum: response.result.data.value.maxCredNum,
-          tailsHash: response.result.data.value.tailsHash,
-          tailsLocation: response.result.data.value.tailsLocation,
-          publicKeys: {
-            accumKey: {
-              z: response.result.data.value.publicKeys.accumKey.z,
-            },
-          },
-        },
-        tag: response.result.data.tag,
-        credDefId: credentialDefinitionId,
-      } satisfies AnonCredsRevocationRegistryDefinition
-
-      return {
-        revocationRegistryDefinitionId,
-        revocationRegistryDefinition,
-        revocationRegistryDefinitionMetadata: {
-          issuanceType: response.result.data.value.issuanceType,
-          didIndyNamespace: pool.didIndyNamespace,
-        },
-        resolutionMetadata: {},
-      }
-    } catch (error) {
-      this.logger.error(
-        `Error retrieving revocation registry definition '${revocationRegistryDefinitionId}' from ledger`,
-        {
-          error,
-          revocationRegistryDefinitionId: revocationRegistryDefinitionId,
-          pool: pool.id,
-        }
-      )
-
-      return {
-        resolutionMetadata: {
-          error: 'notFound',
-          message: `unable to resolve revocation registry definition: ${error.message}`,
-        },
-        revocationRegistryDefinitionId,
-        revocationRegistryDefinitionMetadata: {},
-      }
-    }
-  }
-
-  public async getRevocationStatusList(
-    agentContext: AgentContext,
-    revocationRegistryId: string,
-    timestamp: number
-  ): Promise<GetRevocationStatusListReturn> {
-    const { did, namespaceIdentifier, schemaSeqNo, credentialDefinitionTag, revocationRegistryTag } =
-      parseRevocationRegistryId(revocationRegistryId)
-    const { pool } = await this.getPoolForDid(agentContext, did)
-
-    this.logger.debug(
-      `Using ledger '${pool.didIndyNamespace}' to retrieve revocation registry deltas with revocation registry definition id '${revocationRegistryId}' until ${timestamp}`
-    )
-
-    try {
-      const legacyRevocationRegistryId = getLegacyRevocationRegistryId(
-        namespaceIdentifier,
-        schemaSeqNo,
-        credentialDefinitionTag,
-        revocationRegistryTag
-      )
-      const request = new GetRevocationRegistryDeltaRequest({
-        revocationRegistryId: legacyRevocationRegistryId,
-        toTs: timestamp,
-      })
-
-      this.logger.trace(
-        `Submitting get revocation registry delta request for revocation registry '${revocationRegistryId}' to ledger`
-      )
-
-      const response = await pool.submitReadRequest(request)
-      this.logger.debug(
-        `Got revocation registry deltas '${revocationRegistryId}' until timestamp ${timestamp} from ledger`
-      )
-
-      const { revocationRegistryDefinition, resolutionMetadata, revocationRegistryDefinitionMetadata } =
-        await this.getRevocationRegistryDefinition(agentContext, revocationRegistryId)
-
-      if (
-        !revocationRegistryDefinition ||
-        !revocationRegistryDefinitionMetadata.issuanceType ||
-        typeof revocationRegistryDefinitionMetadata.issuanceType !== 'string'
-      ) {
-        return {
-          resolutionMetadata: {
-            error: `error resolving revocation registry definition with id ${revocationRegistryId}: ${resolutionMetadata.error} ${resolutionMetadata.message}`,
-          },
-          revocationStatusListMetadata: {
-            didIndyNamespace: pool.didIndyNamespace,
-          },
-        }
-      }
-
-      const isIssuanceByDefault = revocationRegistryDefinitionMetadata.issuanceType === 'ISSUANCE_BY_DEFAULT'
-
-      if (!response.result.data) {
-        return {
-          resolutionMetadata: {
-            error: 'notFound',
-            message: `Error retrieving revocation registry delta '${revocationRegistryId}' from ledger, potentially revocation interval ends before revocation registry creation`,
-          },
-          revocationStatusListMetadata: {},
-        }
-      }
-
-      const revocationRegistryDelta = {
-        accum: response.result.data.value.accum_to.value.accum,
-        issued: response.result.data.value.issued,
-        revoked: response.result.data.value.revoked,
-      }
-
-      return {
-        resolutionMetadata: {},
-        revocationStatusList: anonCredsRevocationStatusListFromIndyVdr(
-          revocationRegistryId,
-          revocationRegistryDefinition,
-          revocationRegistryDelta,
-          response.result.data.value.accum_to.txnTime,
-          isIssuanceByDefault
-        ),
-        revocationStatusListMetadata: {
-          didIndyNamespace: pool.didIndyNamespace,
-        },
-      }
-    } catch (error) {
-      this.logger.error(
-        `Error retrieving revocation registry delta '${revocationRegistryId}' from ledger, potentially revocation interval ends before revocation registry creation?"`,
-        {
-          error,
-          revocationRegistryId: revocationRegistryId,
-          pool: pool.id,
-        }
-      )
-
-      return {
-        resolutionMetadata: {
-          error: 'notFound',
-          message: `Error retrieving revocation registry delta '${revocationRegistryId}' from ledger, potentially revocation interval ends before revocation registry creation: ${error.message}`,
-        },
-        revocationStatusListMetadata: {},
-      }
-    }
-  }
-
   //VDR specfic functions
 
   public async sendRequest<Request extends IndyVdrRequest>(request: Request, agentContext: AgentContext, did: string) {
@@ -643,7 +59,7 @@ export class IndyVDRProxyService {
 
   //VDR pool selection functions
 
-  public async getPoolForDid(
+  public async getPoolForLegacyDid(
     agentContext: AgentContext,
     did: string
   ): Promise<{ pool: VdrPoolProxy; nymResponse?: CachedDidResponse['nymResponse'] }> {
@@ -724,6 +140,36 @@ export class IndyVDRProxyService {
     const rejected = onlyRejected(didResponses)
 
     return { successful: successful, rejected: rejected }
+  }
+
+  /**
+   * Get the most appropriate pool for the given did.
+   * If the did is a qualified indy did, the pool will be determined based on the namespace.
+   * If it is a legacy unqualified indy did, the pool will be determined based on the algorithm as described in this document:
+   * https://docs.google.com/document/d/109C_eMsuZnTnYe2OAd02jAts1vC4axwEKIq7_4dnNVA/edit
+   *
+   * This method will optionally return a nym response when the did has been resolved to determine the ledger
+   * either now or in the past. The nymResponse can be used to prevent multiple ledger quries fetching the same
+   * did
+   */
+  public async getPoolForDid(
+    agentContext: AgentContext,
+    did: string
+  ): Promise<{ pool: VdrPoolProxy; nymResponse?: CachedDidResponse['nymResponse'] }> {
+    // Check if the did starts with did:indy
+    const match = did.match(DID_INDY_REGEX)
+
+    if (match) {
+      const [, namespace] = match
+
+      const pool = this.getPoolForNamespace(namespace)
+
+      if (pool) return { pool }
+
+      throw new IndyVdrError(`Pool for indy namespace '${namespace}' not found`)
+    } else {
+      return await this.getPoolForLegacyDid(agentContext, did)
+    }
   }
 
   private async getDidFromPool(did: string, pool: VdrPoolProxy): Promise<PublicDidRequestVDR> {

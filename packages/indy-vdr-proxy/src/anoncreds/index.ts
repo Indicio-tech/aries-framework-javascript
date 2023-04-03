@@ -1,1 +1,1 @@
-export * from './IndyVdrAnonCredsRegistry'
+export * from './IndyVdrProxyAnonCredsRegistry'

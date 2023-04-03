@@ -22,7 +22,7 @@ import {
   GetRevocationRegistryDefinitionRequest,
 } from '@hyperledger/indy-vdr-shared'
 
-import { parseIndyDid, verificationKeyForIndyDid } from '../dids/didIndyUtil'
+import { parseIndyDid } from '../dids/didIndyUtil'
 import { IndyVDRProxyService } from '../vdrProxy'
 
 import {
@@ -38,7 +38,9 @@ import {
 } from './utils/identifiers'
 import { anonCredsRevocationStatusListFromIndyVdr } from './utils/transform'
 
-export class IndyVdrAnonCredsRegistry implements AnonCredsRegistry {
+export class IndyVdrProxyAnonCredsRegistry implements AnonCredsRegistry {
+  public readonly methodName = 'VDRProxy'
+
   public readonly supportedIdentifier = indyVdrAnonCredsRegistryIdentifierRegex
 
   public async getSchema(agentContext: AgentContext, schemaId: string): Promise<GetSchemaReturn> {

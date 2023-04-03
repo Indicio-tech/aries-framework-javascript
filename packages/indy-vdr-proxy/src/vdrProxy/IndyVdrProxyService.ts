@@ -1,4 +1,6 @@
+import type { CachedDidResponse, PublicDidRequestVDR, VdrPoolConfig } from './VdrPoolProxy'
 import type { AgentContext } from '@aries-framework/core'
+import type { IndyVdrRequest } from '@hyperledger/indy-vdr-shared'
 
 import {
   CacheModuleConfig,
@@ -8,15 +10,13 @@ import {
   injectable,
   inject,
 } from '@aries-framework/core'
-
 import { allSettled, onlyFulfilled, onlyRejected } from '@aries-framework/core/src/utils/promises'
-import { CachedDidResponse } from './VdrPoolProxy'
-import { isSelfCertifiedDid } from '../utils/did'
+import { GetNymRequest } from '@hyperledger/indy-vdr-shared'
 
-import { GetNymRequest, IndyVdrRequest } from '@hyperledger/indy-vdr-shared'
-import { PublicDidRequestVDR, VdrPoolConfig, VdrPoolProxy } from './VdrPoolProxy'
 import { IndyVdrError, IndyVdrNotFoundError } from '../error'
-import { DID_INDY_REGEX } from '../utils/did'
+import { isSelfCertifiedDid, DID_INDY_REGEX } from '../utils/did'
+
+import { VdrPoolProxy } from './VdrPoolProxy'
 
 @injectable()
 export class IndyVDRProxyService {

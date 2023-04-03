@@ -1,4 +1,5 @@
 import type { IndyVdrPoolConfig } from './pool'
+import type { VdrPoolConfig } from './vdrProxy'
 import type { IndyVdr } from '@hyperledger/indy-vdr-shared'
 
 export interface IndyVdrModuleConfigOptions {
@@ -58,7 +59,7 @@ export interface IndyVdrModuleConfigOptions {
    */
   networks: [IndyVdrPoolConfig, ...IndyVdrPoolConfig[]]
 
-  useProxy: boolean
+  proxyNetworks?: [VdrPoolConfig, ...VdrPoolConfig[]]
 }
 
 export class IndyVdrModuleConfig {
@@ -79,6 +80,6 @@ export class IndyVdrModuleConfig {
   }
 
   public get useProxy() {
-    return this.options.useProxy
+    return this.options.proxyNetworks !== undefined
   }
 }

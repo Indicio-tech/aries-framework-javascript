@@ -28,7 +28,7 @@ export class IndyVdrModule implements Module {
   }
 
   public async initialize(agentContext: AgentContext): Promise<void> {
-    if (agentContext.dependencyManager.isRegistered(IndyVdrPoolService)) return
+    if (agentContext.dependencyManager.isRegistered(IndyVDRProxyService)) return
     const indyVdrPoolService = agentContext.dependencyManager.resolve(IndyVdrPoolService)
 
     for (const pool of indyVdrPoolService.pools) {

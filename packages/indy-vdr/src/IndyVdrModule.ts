@@ -3,6 +3,7 @@ import type { AgentContext, DependencyManager, Module } from '@aries-framework/c
 
 import { IndyVdrModuleConfig } from './IndyVdrModuleConfig'
 import { IndyVdrPoolService } from './pool/IndyVdrPoolService'
+import { IndyVDRProxyService } from './vdrProxy'
 
 /**
  * @public
@@ -19,7 +20,11 @@ export class IndyVdrModule implements Module {
     dependencyManager.registerInstance(IndyVdrModuleConfig, this.config)
 
     // Services
-    dependencyManager.registerSingleton(IndyVdrPoolService)
+    if (this.config.useProxy) {
+      dependencyManager.registerSingleton(IndyVDRProxyService)
+    } else {
+      dependencyManager.registerSingleton(IndyVdrPoolService)
+    }
   }
 
   public async initialize(agentContext: AgentContext): Promise<void> {

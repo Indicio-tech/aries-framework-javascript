@@ -1,3 +1,5 @@
+import type { IndyVdrPool } from '../pool'
+import type { VdrPoolProxy } from '../vdrProxy'
 import type {
   AnonCredsRegistry,
   GetCredentialDefinitionReturn,
@@ -23,7 +25,7 @@ import {
 } from '@hyperledger/indy-vdr-shared'
 
 import { parseIndyDid, verificationKeyForIndyDid } from '../dids/didIndyUtil'
-import { IndyVdrPoolService } from '../pool'
+import { getPoolService } from '../utils/pool'
 
 import {
   getLegacySchemaId,
@@ -45,7 +47,7 @@ export class IndyVdrAnonCredsRegistry implements AnonCredsRegistry {
 
   public async getSchema(agentContext: AgentContext, schemaId: string): Promise<GetSchemaReturn> {
     try {
-      const indyVdrPoolService = agentContext.dependencyManager.resolve(IndyVdrPoolService)
+      const indyVdrPoolService = getPoolService(agentContext)
 
       // parse schema id (supports did:indy and legacy)
       const { did, namespaceIdentifier, schemaName, schemaVersion } = parseSchemaId(schemaId)
@@ -119,9 +121,9 @@ export class IndyVdrAnonCredsRegistry implements AnonCredsRegistry {
       // for registering, that will allow us to extract the namespace and means all stored records will use did:indy identifiers.
       const { namespaceIdentifier, namespace } = parseIndyDid(options.schema.issuerId)
 
-      const indyVdrPoolService = agentContext.dependencyManager.resolve(IndyVdrPoolService)
+      const indyVdrPoolService = getPoolService(agentContext)
 
-      const pool = indyVdrPoolService.getPoolForNamespace(namespace)
+      let pool = indyVdrPoolService.getPoolForNamespace(namespace)
       agentContext.config.logger.debug(
         `Register schema on ledger '${pool.indyNamespace}' with did '${options.schema.issuerId}'`,
         options.schema
@@ -147,7 +149,17 @@ export class IndyVdrAnonCredsRegistry implements AnonCredsRegistry {
       })
 
       const submitterKey = await verificationKeyForIndyDid(agentContext, options.schema.issuerId)
-      const response = await pool.submitWriteRequest(agentContext, schemaRequest, submitterKey)
+      let response = undefined
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      if (pool.url) {
+        // if pool.url exists then it is a vdr proxy pool
+        pool = pool as VdrPoolProxy
+        response = await pool.submitWriteRequest(schemaRequest)
+      } else {
+        pool = pool as IndyVdrPool
+        response = await pool.submitWriteRequest(agentContext, schemaRequest, submitterKey)
+      }
       agentContext.config.logger.debug(`Registered schema '${didIndySchemaId}' on ledger '${pool.indyNamespace}'`, {
         response,
         schemaRequest,
@@ -195,7 +207,7 @@ export class IndyVdrAnonCredsRegistry implements AnonCredsRegistry {
     credentialDefinitionId: string
   ): Promise<GetCredentialDefinitionReturn> {
     try {
-      const indyVdrPoolService = agentContext.dependencyManager.resolve(IndyVdrPoolService)
+      const indyVdrPoolService = getPoolService(agentContext)
 
       // we support did:indy and legacy identifiers
       const { did, namespaceIdentifier, schemaSeqNo, tag } = parseCredentialDefinitionId(credentialDefinitionId)
@@ -276,9 +288,9 @@ export class IndyVdrAnonCredsRegistry implements AnonCredsRegistry {
       // identifiers for registering, that will allow us to extract the namespace and means all stored records will use did:indy identifiers.
       const { namespaceIdentifier, namespace } = parseIndyDid(options.credentialDefinition.issuerId)
 
-      const indyVdrPoolService = agentContext.dependencyManager.resolve(IndyVdrPoolService)
+      const indyVdrPoolService = getPoolService(agentContext)
 
-      const pool = indyVdrPoolService.getPoolForNamespace(namespace)
+      let pool = indyVdrPoolService.getPoolForNamespace(namespace)
       agentContext.config.logger.debug(
         `Registering credential definition on ledger '${pool.indyNamespace}' with did '${options.credentialDefinition.issuerId}'`,
         options.credentialDefinition
@@ -329,7 +341,17 @@ export class IndyVdrAnonCredsRegistry implements AnonCredsRegistry {
       })
 
       const submitterKey = await verificationKeyForIndyDid(agentContext, options.credentialDefinition.issuerId)
-      const response = await pool.submitWriteRequest(agentContext, credentialDefinitionRequest, submitterKey)
+      let response = undefined
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      if (pool.url) {
+        // if pool.url exists then it is a vdr proxy pool
+        pool = pool as VdrPoolProxy
+        response = await pool.submitWriteRequest(credentialDefinitionRequest)
+      } else {
+        pool = pool as IndyVdrPool
+        response = await pool.submitWriteRequest(agentContext, credentialDefinitionRequest, submitterKey)
+      }
       agentContext.config.logger.debug(
         `Registered credential definition '${didIndyCredentialDefinitionId}' on ledger '${pool.indyNamespace}'`,
         {
@@ -374,11 +396,11 @@ export class IndyVdrAnonCredsRegistry implements AnonCredsRegistry {
     revocationRegistryDefinitionId: string
   ): Promise<GetRevocationRegistryDefinitionReturn> {
     try {
-      const indySdkPoolService = agentContext.dependencyManager.resolve(IndyVdrPoolService)
+      const indyVdrPoolService = getPoolService(agentContext)
 
       const { did, namespaceIdentifier, credentialDefinitionTag, revocationRegistryTag, schemaSeqNo } =
         parseRevocationRegistryId(revocationRegistryDefinitionId)
-      const { pool } = await indySdkPoolService.getPoolForDid(agentContext, did)
+      const { pool } = await indyVdrPoolService.getPoolForDid(agentContext, did)
 
       agentContext.config.logger.debug(
         `Using ledger '${pool.indyNamespace}' to retrieve revocation registry definition '${revocationRegistryDefinitionId}'`
@@ -485,11 +507,11 @@ export class IndyVdrAnonCredsRegistry implements AnonCredsRegistry {
     timestamp: number
   ): Promise<GetRevocationStatusListReturn> {
     try {
-      const indySdkPoolService = agentContext.dependencyManager.resolve(IndyVdrPoolService)
+      const indyVdrPoolService = getPoolService(agentContext)
 
       const { did, namespaceIdentifier, schemaSeqNo, credentialDefinitionTag, revocationRegistryTag } =
         parseRevocationRegistryId(revocationRegistryId)
-      const { pool } = await indySdkPoolService.getPoolForDid(agentContext, did)
+      const { pool } = await indyVdrPoolService.getPoolForDid(agentContext, did)
 
       agentContext.config.logger.debug(
         `Using ledger '${pool.indyNamespace}' to retrieve revocation registry deltas with revocation registry definition id '${revocationRegistryId}' until ${timestamp}`
@@ -584,7 +606,7 @@ export class IndyVdrAnonCredsRegistry implements AnonCredsRegistry {
   }
 
   private async fetchIndySchemaWithSeqNo(agentContext: AgentContext, seqNo: number, did: string) {
-    const indyVdrPoolService = agentContext.dependencyManager.resolve(IndyVdrPoolService)
+    const indyVdrPoolService = getPoolService(agentContext)
 
     const { pool } = await indyVdrPoolService.getPoolForDid(agentContext, did)
 

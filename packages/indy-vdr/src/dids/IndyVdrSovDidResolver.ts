@@ -1,11 +1,12 @@
 import type { GetNymResponseData, IndyEndpointAttrib } from './didSovUtil'
 import type { IndyVdrPool } from '../pool'
+import type { VdrPoolProxy } from '../vdrProxy'
 import type { DidResolutionResult, ParsedDid, DidResolver, AgentContext } from '@aries-framework/core'
 
 import { GetAttribRequest, GetNymRequest } from '@hyperledger/indy-vdr-shared'
 
 import { IndyVdrError, IndyVdrNotFoundError } from '../error'
-import { IndyVdrPoolService } from '../pool/IndyVdrPoolService'
+import { getPoolService } from '../utils/pool'
 
 import { addServicesFromEndpointsAttrib, sovDidDocumentFromDid } from './didSovUtil'
 
@@ -16,7 +17,7 @@ export class IndyVdrSovDidResolver implements DidResolver {
     const didDocumentMetadata = {}
 
     try {
-      const indyVdrPoolService = agentContext.dependencyManager.resolve(IndyVdrPoolService)
+      const indyVdrPoolService = getPoolService(agentContext)
 
       // FIXME: this actually fetches the did twice (if not cached), once for the pool and once for the nym
       // we do not store the diddocContent in the pool cache currently so we need to fetch it again
@@ -49,7 +50,7 @@ export class IndyVdrSovDidResolver implements DidResolver {
     }
   }
 
-  private async getPublicDid(pool: IndyVdrPool, unqualifiedDid: string) {
+  private async getPublicDid(pool: IndyVdrPool | VdrPoolProxy, unqualifiedDid: string) {
     const request = new GetNymRequest({ dest: unqualifiedDid })
     const didResponse = await pool.submitReadRequest(request)
 
@@ -59,7 +60,7 @@ export class IndyVdrSovDidResolver implements DidResolver {
     return JSON.parse(didResponse.result.data) as GetNymResponseData
   }
 
-  private async getEndpointsForDid(agentContext: AgentContext, pool: IndyVdrPool, did: string) {
+  private async getEndpointsForDid(agentContext: AgentContext, pool: IndyVdrPool | VdrPoolProxy, did: string) {
     try {
       agentContext.config.logger.debug(`Get endpoints for did '${did}' from ledger '${pool.indyNamespace}'`)
 

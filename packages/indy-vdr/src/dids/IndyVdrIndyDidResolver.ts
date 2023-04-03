@@ -1,11 +1,12 @@
 import type { GetNymResponseData, IndyEndpointAttrib } from './didSovUtil'
 import type { IndyVdrPool } from '../pool'
+import type { VdrPoolProxy } from '../vdrProxy'
 import type { DidResolutionResult, DidResolver, AgentContext } from '@aries-framework/core'
 
 import { GetAttribRequest, GetNymRequest } from '@hyperledger/indy-vdr-shared'
 
 import { IndyVdrError, IndyVdrNotFoundError } from '../error'
-import { IndyVdrPoolService } from '../pool'
+import { getPoolService } from '../utils/pool'
 
 import { combineDidDocumentWithJson, createKeyAgreementKey, indyDidDocumentFromDid, parseIndyDid } from './didIndyUtil'
 import { getFullVerkey, addServicesFromEndpointsAttrib } from './didSovUtil'
@@ -39,7 +40,7 @@ export class IndyVdrIndyDidResolver implements DidResolver {
   private async buildDidDocument(agentContext: AgentContext, did: string) {
     const { namespaceIdentifier, namespace } = parseIndyDid(did)
 
-    const poolService = agentContext.dependencyManager.resolve(IndyVdrPoolService)
+    const poolService = getPoolService(agentContext)
     const pool = poolService.getPoolForNamespace(namespace)
 
     const nym = await this.getPublicDid(pool, namespaceIdentifier)
@@ -78,7 +79,7 @@ export class IndyVdrIndyDidResolver implements DidResolver {
     }
   }
 
-  private async getPublicDid(pool: IndyVdrPool, unqualifiedDid: string) {
+  private async getPublicDid(pool: IndyVdrPool | VdrPoolProxy, unqualifiedDid: string) {
     const request = new GetNymRequest({ dest: unqualifiedDid })
 
     const didResponse = await pool.submitReadRequest(request)
@@ -89,7 +90,11 @@ export class IndyVdrIndyDidResolver implements DidResolver {
     return JSON.parse(didResponse.result.data) as GetNymResponseData
   }
 
-  private async getEndpointsForDid(agentContext: AgentContext, pool: IndyVdrPool, unqualifiedDid: string) {
+  private async getEndpointsForDid(
+    agentContext: AgentContext,
+    pool: IndyVdrPool | VdrPoolProxy,
+    unqualifiedDid: string
+  ) {
     try {
       agentContext.config.logger.debug(`Get endpoints for did '${unqualifiedDid}' from ledger '${pool.indyNamespace}'`)
 

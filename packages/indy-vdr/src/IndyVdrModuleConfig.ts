@@ -57,6 +57,8 @@ export interface IndyVdrModuleConfigOptions {
    * ```
    */
   networks: [IndyVdrPoolConfig, ...IndyVdrPoolConfig[]]
+
+  useProxy: boolean
 }
 
 export class IndyVdrModuleConfig {
@@ -74,5 +76,9 @@ export class IndyVdrModuleConfig {
   /** See {@link IndyVdrModuleConfigOptions.indyVdr} */
   public get indyVdr() {
     return this.options.indyVdr
+  }
+
+  public get useProxy() {
+    return this.options.useProxy
   }
 }

@@ -79,6 +79,10 @@ export class IndyVdrModuleConfig {
     return this.options.indyVdr
   }
 
+  public get proxyNetworks() {
+    return this.options.proxyNetworks
+  }
+
   public get useProxy() {
     return this.options.proxyNetworks !== undefined
   }

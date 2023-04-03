@@ -1,4 +1,5 @@
 import type { CachedDidResponse, PublicDidRequestVDR, VdrPoolConfig } from './VdrPoolProxy'
+import type { IndyVdrModuleConfig } from '../IndyVdrModuleConfig'
 import type { AgentContext } from '@aries-framework/core'
 import type { IndyVdrRequest } from '@hyperledger/indy-vdr-shared'
 
@@ -23,22 +24,26 @@ export class IndyVDRProxyService {
   private logger: Logger
   private pools: VdrPoolProxy[] = []
   private agentDependencies: AgentDependencies
+  private config: IndyVdrModuleConfig
 
   public constructor(
     @inject(InjectionSymbols.AgentDependencies) agentDependencies: AgentDependencies,
     @inject(InjectionSymbols.Logger) logger: Logger,
-    pools: VdrPoolConfig[]
+    IndyVdrModuleConfig: IndyVdrModuleConfig
   ) {
     this.logger = logger
-    this.setPools(pools)
+    this.setPools(IndyVdrModuleConfig.proxyNetworks)
     this.agentDependencies = agentDependencies
+    this.config = IndyVdrModuleConfig
   }
 
-  public setPools(poolsConfigs: VdrPoolConfig[]) {
-    const pools = poolsConfigs.map((config) => {
-      return new VdrPoolProxy(this.agentDependencies, config)
-    })
-    this.pools = pools
+  public setPools(poolsConfigs: VdrPoolConfig[] | undefined) {
+    if (poolsConfigs) {
+      const pools = poolsConfigs.map((config) => {
+        return new VdrPoolProxy(this.agentDependencies, config)
+      })
+      this.pools = pools
+    }
   }
 
   public addNodeToPools(node: VdrPoolProxy[]) {
@@ -75,7 +80,7 @@ export class IndyVDRProxyService {
     const cacheKey = `IndyVdrProxyService:${did}`
 
     const cachedNymResponse = await cache.get<CachedDidResponse>(agentContext, cacheKey)
-    const pool = this.pools.find((pool) => pool.didIndyNamespace === cachedNymResponse?.indyNamespace)
+    const pool = this.pools.find((pool) => pool.indyNamespace === cachedNymResponse?.indyNamespace)
 
     if (cachedNymResponse && pool) {
       this.logger.trace(`Found ledger id '${pool.id}' for did '${did}' in cache`)
@@ -181,14 +186,14 @@ export class IndyVDRProxyService {
       const response = await pool.submitReadRequest(request)
 
       if (!response.result.data) {
-        throw new IndyVdrNotFoundError(`Did ${did} not found on indy pool with namespace ${pool.didIndyNamespace}`)
+        throw new IndyVdrNotFoundError(`Did ${did} not found on indy pool with namespace ${pool.indyNamespace}`)
       }
 
       const result = JSON.parse(response.result.data)
       this.logger.trace(`Retieved did '${did}' from ledger '${pool.id}'`, result)
 
       return {
-        did: { nymResponse: { did: result.dest, verkey: result.verkey }, indyNamespace: pool.didIndyNamespace },
+        did: { nymResponse: { did: result.dest, verkey: result.verkey }, indyNamespace: pool.indyNamespace },
         pool,
         response,
       }
@@ -217,7 +222,7 @@ export class IndyVDRProxyService {
       return this.pools[0]
     }
 
-    const pool = this.pools.find((pool) => pool.didIndyNamespace === indyNamespace)
+    const pool = this.pools.find((pool) => pool.indyNamespace === indyNamespace)
 
     if (!pool) {
       throw new Error(`No ledgers found for IndyNamespace '${indyNamespace}'.`)

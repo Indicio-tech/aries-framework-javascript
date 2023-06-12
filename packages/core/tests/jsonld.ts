@@ -14,9 +14,9 @@ import {
   CredentialsModule,
   JsonLdCredentialFormatService,
   V2CredentialProtocol,
-  W3cVcModule,
+  W3cCredentialsModule,
 } from '../src'
-import { customDocumentLoader } from '../src/modules/vc/__tests__/documentLoader'
+import { customDocumentLoader } from '../src/modules/vc/data-integrity/__tests__/documentLoader'
 
 import { setupEventReplaySubjects } from './events'
 import { getAgentOptions, makeConnection } from './helpers'
@@ -33,7 +33,7 @@ export const getJsonLdModules = ({
       credentialProtocols: [new V2CredentialProtocol({ credentialFormats: [new JsonLdCredentialFormatService()] })],
       autoAcceptCredentials,
     }),
-    w3cVc: new W3cVcModule({
+    w3cCredentials: new W3cCredentialsModule({
       documentLoader: customDocumentLoader,
     }),
     proofs: new ProofsModule({

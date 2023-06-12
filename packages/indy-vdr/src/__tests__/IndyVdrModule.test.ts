@@ -9,6 +9,8 @@ import { IndyVdrPoolService } from '../pool'
 const dependencyManager = {
   registerInstance: jest.fn(),
   registerSingleton: jest.fn(),
+  registerContextScoped: jest.fn(),
+  resolve: jest.fn().mockReturnValue({ logger: { warn: jest.fn() } }),
 } as unknown as DependencyManager
 
 describe('IndyVdrModule', () => {

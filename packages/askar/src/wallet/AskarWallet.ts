@@ -8,7 +8,6 @@ import type {
   Wallet,
   WalletConfigRekey,
   KeyPair,
-  KeyDerivationMethod,
   WalletExportImportConfig,
 } from '@aries-framework/core'
 import type { KeyEntryObject, Session } from '@hyperledger/aries-askar-shared'
@@ -33,15 +32,9 @@ import {
   TypedArrayEncoder,
   FileSystem,
   WalletNotFoundError,
+  KeyDerivationMethod,
 } from '@aries-framework/core'
-import {
-  StoreKeyMethod,
-  KeyAlgs,
-  CryptoBox,
-  Store,
-  Key as AskarKey,
-  keyAlgFromString,
-} from '@hyperledger/aries-askar-shared'
+import { KeyAlgs, CryptoBox, Store, Key as AskarKey, keyAlgFromString } from '@hyperledger/aries-askar-shared'
 // eslint-disable-next-line import/order
 import BigNumber from 'bn.js'
 
@@ -53,8 +46,9 @@ import {
   AskarErrorCode,
   isAskarError,
   keyDerivationMethodToStoreKeyMethod,
-  keyTypeSupportedByAskar,
+  isKeyTypeSupportedByAskar,
   uriFromWalletConfig,
+  keyTypesSupportedByAskar,
 } from '../utils'
 
 import { JweEnvelope, JweRecipient } from './JweEnvelope'
@@ -105,6 +99,12 @@ export class AskarWallet implements Wallet {
     }
 
     return this._session
+  }
+
+  public get supportedKeyTypes() {
+    const signingKeyProviderSupportedKeyTypes = this.signingKeyProviderRegistry.supportedKeyTypes
+
+    return Array.from(new Set([...keyTypesSupportedByAskar, ...signingKeyProviderSupportedKeyTypes]))
   }
 
   /**
@@ -233,9 +233,7 @@ export class AskarWallet implements Wallet {
       if (rekey) {
         await this._store.rekey({
           passKey: rekey,
-          keyMethod:
-            keyDerivationMethodToStoreKeyMethod(rekeyDerivation) ??
-            (`${StoreKeyMethod.Kdf}:argon2i:int` as StoreKeyMethod),
+          keyMethod: keyDerivationMethodToStoreKeyMethod(rekeyDerivation ?? KeyDerivationMethod.Argon2IMod),
         })
       }
       this._session = await this._store.openSession()
@@ -431,7 +429,7 @@ export class AskarWallet implements Wallet {
         throw new WalletError('Invalid private key provided')
       }
 
-      if (keyTypeSupportedByAskar(keyType)) {
+      if (isKeyTypeSupportedByAskar(keyType)) {
         const algorithm = keyAlgFromString(keyType)
 
         // Create key
@@ -491,7 +489,7 @@ export class AskarWallet implements Wallet {
   public async sign({ data, key }: WalletSignOptions): Promise<Buffer> {
     let keyEntry: KeyEntryObject | null | undefined
     try {
-      if (keyTypeSupportedByAskar(key.keyType)) {
+      if (isKeyTypeSupportedByAskar(key.keyType)) {
         if (!TypedArrayEncoder.isTypedArray(data)) {
           throw new WalletError(`Currently not supporting signing of multiple messages`)
         }
@@ -527,7 +525,7 @@ export class AskarWallet implements Wallet {
       if (!isError(error)) {
         throw new AriesFrameworkError('Attempted to throw error, but it was not of type Error', { cause: error })
       }
-      throw new WalletError(`Error signing data with verkey ${key.publicKeyBase58}`, { cause: error })
+      throw new WalletError(`Error signing data with verkey ${key.publicKeyBase58}. ${error.message}`, { cause: error })
     }
   }
 
@@ -546,7 +544,7 @@ export class AskarWallet implements Wallet {
   public async verify({ data, key, signature }: WalletVerifyOptions): Promise<boolean> {
     let askarKey: AskarKey | undefined
     try {
-      if (keyTypeSupportedByAskar(key.keyType)) {
+      if (isKeyTypeSupportedByAskar(key.keyType)) {
         if (!TypedArrayEncoder.isTypedArray(data)) {
           throw new WalletError(`Currently not supporting verification of multiple messages`)
         }
@@ -603,7 +601,12 @@ export class AskarWallet implements Wallet {
 
     try {
       cek = AskarKey.generate(KeyAlgs.Chacha20C20P)
+
       senderKey = senderVerkey ? await this.session.fetchKey({ name: senderVerkey }) : undefined
+      if (senderVerkey && !senderKey) {
+        throw new WalletError(`Unable to pack message. Sender key ${senderVerkey} not found in wallet.`)
+      }
+
       senderExchangeKey = senderKey ? senderKey.key.convertkey({ algorithm: KeyAlgs.X25519 }) : undefined
 
       const recipients: JweRecipient[] = []
@@ -823,9 +826,9 @@ export class AskarWallet implements Wallet {
       uri,
       profile: walletConfig.id,
       // FIXME: Default derivation method should be set somewhere in either agent config or some constants
-      keyMethod:
-        keyDerivationMethodToStoreKeyMethod(walletConfig.keyDerivationMethod) ??
-        (`${StoreKeyMethod.Kdf}:argon2i:int` as StoreKeyMethod),
+      keyMethod: keyDerivationMethodToStoreKeyMethod(
+        walletConfig.keyDerivationMethod ?? KeyDerivationMethod.Argon2IMod
+      ),
       passKey: walletConfig.key,
     }
   }

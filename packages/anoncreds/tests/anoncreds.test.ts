@@ -65,7 +65,7 @@ const existingRevocationStatusLists = {
       currentAccumulator: 'ab81257c-be63-4051-9e21-c7d384412f64',
       issuerId: 'VsKV7grR1BUE29mG2Fm2kX',
       revocationList: [1, 0, 1],
-      revRegId: 'VsKV7grR1BUE29mG2Fm2kX:4:VsKV7grR1BUE29mG2Fm2kX:3:CL:75206:TAG:CL_ACCUM:TAG',
+      revRegDefId: 'VsKV7grR1BUE29mG2Fm2kX:4:VsKV7grR1BUE29mG2Fm2kX:3:CL:75206:TAG:CL_ACCUM:TAG',
       timestamp: 10123,
     },
   },
@@ -165,6 +165,7 @@ describe('AnonCreds API', () => {
       schemaName: 'Employee Credential',
       schemaVersion: '1.0.0',
       methodName: 'inMemory',
+      unqualifiedSchemaId: '6xDN7v3AiGgusRp4bqZACZ:2:Employee Credential:1.0.0',
     })
   })
 
@@ -263,6 +264,7 @@ describe('AnonCreds API', () => {
       schemaId: '7Cd2Yj9yEZNcmNoH54tq9i:2:Test Schema:1.0.0',
       issuerId: 'did:indy:pool:localhost:VsKV7grR1BUE29mG2Fm2kX',
       tag: 'TAG',
+      unqualifiedCredentialDefinitionId: 'VsKV7grR1BUE29mG2Fm2kX:3:CL:75206:TAG',
     })
   })
 

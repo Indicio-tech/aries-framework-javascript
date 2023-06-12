@@ -3,13 +3,15 @@ import type {
   AnonCredsRevocationStatusList,
   AnonCredsRevocationRegistryDefinition,
   AnonCredsSchema,
+  AnonCredsCredentialRequestMetadata,
+  AnonCredsLinkSecretBlindingData,
 } from '@aries-framework/anoncreds'
-import type { CredDef, RevocReg, RevocRegDef, RevocRegDelta, Schema } from 'indy-sdk'
+import type { CredDef, CredReqMetadata, RevocReg, RevocRegDef, RevocRegDelta, Schema } from 'indy-sdk'
 
-import { parseCredentialDefinitionId, parseSchemaId } from './identifiers'
+import { parseIndyCredentialDefinitionId, parseIndySchemaId } from '@aries-framework/anoncreds'
 
 export function anonCredsSchemaFromIndySdk(schema: Schema): AnonCredsSchema {
-  const { did } = parseSchemaId(schema.id)
+  const { did } = parseIndySchemaId(schema.id)
   return {
     issuerId: did,
     name: schema.name,
@@ -30,7 +32,7 @@ export function indySdkSchemaFromAnonCreds(schemaId: string, schema: AnonCredsSc
 }
 
 export function anonCredsCredentialDefinitionFromIndySdk(credentialDefinition: CredDef): AnonCredsCredentialDefinition {
-  const { did } = parseCredentialDefinitionId(credentialDefinition.id)
+  const { did } = parseIndyCredentialDefinitionId(credentialDefinition.id)
 
   return {
     issuerId: did,
@@ -101,7 +103,7 @@ export function anonCredsRevocationStatusListFromIndySdk(
   return {
     issuerId: revocationRegistryDefinition.issuerId,
     currentAccumulator: delta.value.accum,
-    revRegId: revocationRegistryDefinitionId,
+    revRegDefId: revocationRegistryDefinitionId,
     revocationList,
     timestamp,
   }
@@ -130,9 +132,30 @@ export function indySdkRevocationDeltaFromAnonCreds(
       accum: revocationStatusList.currentAccumulator,
       issued: [],
       revoked: revokedIndices,
-      // NOTE: I don't think this is used?
-      prevAccum: '',
+      // NOTE: this must be a valid accumulator but it's not actually used. So we set it to the
+      // currentAccumulator as that should always be a valid accumulator.
+      prevAccum: revocationStatusList.currentAccumulator,
     },
     ver: '1.0',
+  }
+}
+
+export function anonCredsCredentialRequestMetadataFromIndySdk(
+  credentialRequestMetadata: CredReqMetadata
+): AnonCredsCredentialRequestMetadata {
+  return {
+    link_secret_blinding_data: credentialRequestMetadata.master_secret_blinding_data as AnonCredsLinkSecretBlindingData,
+    link_secret_name: credentialRequestMetadata.master_secret_name as string,
+    nonce: credentialRequestMetadata.nonce as string,
+  }
+}
+
+export function indySdkCredentialRequestMetadataFromAnonCreds(
+  credentialRequestMetadata: AnonCredsCredentialRequestMetadata
+): CredReqMetadata {
+  return {
+    master_secret_blinding_data: credentialRequestMetadata.link_secret_blinding_data,
+    master_secret_name: credentialRequestMetadata.link_secret_name,
+    nonce: credentialRequestMetadata.nonce,
   }
 }

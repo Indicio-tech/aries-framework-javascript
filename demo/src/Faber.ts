@@ -1,12 +1,21 @@
 import type { RegisterCredentialDefinitionReturnStateFinished } from '@aries-framework/anoncreds'
 import type { ConnectionRecord, ConnectionStateChangedEvent } from '@aries-framework/core'
+import type {
+  IndyVdrRegisterSchemaOptions,
+  IndyVdrRegisterCredentialDefinitionOptions,
+} from '@aries-framework/indy-vdr'
 import type BottomBar from 'inquirer/lib/ui/bottom-bar'
 
-import { KeyType, TypedArrayEncoder, utils, ConnectionEventTypes } from '@aries-framework/core'
+import { ConnectionEventTypes, KeyType, TypedArrayEncoder, utils } from '@aries-framework/core'
 import { ui } from 'inquirer'
 
-import { BaseAgent } from './BaseAgent'
-import { Color, greenText, Output, purpleText, redText } from './OutputClass'
+import { BaseAgent, indyNetworkConfig } from './BaseAgent'
+import { Color, Output, greenText, purpleText, redText } from './OutputClass'
+
+export enum RegistryOptions {
+  indy = 'did:indy',
+  cheqd = 'did:cheqd',
+}
 
 export class Faber extends BaseAgent {
   public outOfBandId?: string
@@ -22,25 +31,29 @@ export class Faber extends BaseAgent {
   public static async build(): Promise<Faber> {
     const faber = new Faber(9001, 'faber')
     await faber.initializeAgent()
+    return faber
+  }
 
+  public async importDid(registry: string) {
     // NOTE: we assume the did is already registered on the ledger, we just store the private key in the wallet
     // and store the existing did in the wallet
-    const privateKey = TypedArrayEncoder.fromString('afjdemoverysercure00000000000000')
+    // indy did is based on private key (seed)
+    const unqualifiedIndyDid = '2jEvRuKmfBJTRa7QowDpNN'
+    const cheqdDid = 'did:cheqd:testnet:d37eba59-513d-42d3-8f9f-d1df0548b675'
+    const indyDid = `did:indy:${indyNetworkConfig.indyNamespace}:${unqualifiedIndyDid}`
 
-    const key = await faber.agent.wallet.createKey({
-      keyType: KeyType.Ed25519,
-      privateKey,
+    const did = registry === RegistryOptions.indy ? indyDid : cheqdDid
+    await this.agent.dids.import({
+      did,
+      overwrite: true,
+      privateKeys: [
+        {
+          keyType: KeyType.Ed25519,
+          privateKey: TypedArrayEncoder.fromString('afjdemoverysercure00000000000000'),
+        },
+      ],
     })
-
-    // did is first 16 bytes of public key encoded as base58
-    const unqualifiedIndyDid = TypedArrayEncoder.toBase58(key.publicKey.slice(0, 16))
-    await faber.agent.dids.import({
-      did: `did:sov:${unqualifiedIndyDid}`,
-    })
-
-    faber.anonCredsIssuerId = unqualifiedIndyDid
-
-    return faber
+    this.anonCredsIssuerId = did
   }
 
   private async getConnectionRecord() {
@@ -133,10 +146,11 @@ export class Faber extends BaseAgent {
     this.printSchema(schemaTemplate.name, schemaTemplate.version, schemaTemplate.attrNames)
     this.ui.updateBottomBar(greenText('\nRegistering schema...\n', false))
 
-    const { schemaState } = await this.agent.modules.anoncreds.registerSchema({
+    const { schemaState } = await this.agent.modules.anoncreds.registerSchema<IndyVdrRegisterSchemaOptions>({
       schema: schemaTemplate,
       options: {
-        didIndyNamespace: 'bcovrin:test',
+        endorserMode: 'internal',
+        endorserDid: this.anonCredsIssuerId,
       },
     })
 
@@ -155,16 +169,18 @@ export class Faber extends BaseAgent {
     }
 
     this.ui.updateBottomBar('\nRegistering credential definition...\n')
-    const { credentialDefinitionState } = await this.agent.modules.anoncreds.registerCredentialDefinition({
-      credentialDefinition: {
-        schemaId,
-        issuerId: this.anonCredsIssuerId,
-        tag: 'latest',
-      },
-      options: {
-        didIndyNamespace: 'bcovrin:test',
-      },
-    })
+    const { credentialDefinitionState } =
+      await this.agent.modules.anoncreds.registerCredentialDefinition<IndyVdrRegisterCredentialDefinitionOptions>({
+        credentialDefinition: {
+          schemaId,
+          issuerId: this.anonCredsIssuerId,
+          tag: 'latest',
+        },
+        options: {
+          endorserMode: 'internal',
+          endorserDid: this.anonCredsIssuerId,
+        },
+      })
 
     if (credentialDefinitionState.state !== 'finished') {
       throw new Error(
@@ -188,9 +204,9 @@ export class Faber extends BaseAgent {
 
     await this.agent.credentials.offerCredential({
       connectionId: connectionRecord.id,
-      protocolVersion: 'v1',
+      protocolVersion: 'v2',
       credentialFormats: {
-        indy: {
+        anoncreds: {
           attributes: [
             {
               name: 'name',
@@ -241,10 +257,10 @@ export class Faber extends BaseAgent {
     await this.printProofFlow(greenText('\nRequesting proof...\n', false))
 
     await this.agent.proofs.requestProof({
-      protocolVersion: 'v1',
+      protocolVersion: 'v2',
       connectionId: connectionRecord.id,
       proofFormats: {
-        indy: {
+        anoncreds: {
           name: 'proof-request',
           version: '1.0',
           requested_attributes: proofAttribute,

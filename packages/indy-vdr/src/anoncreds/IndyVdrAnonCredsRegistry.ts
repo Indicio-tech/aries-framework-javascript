@@ -42,7 +42,6 @@ import {
 } from '@hyperledger/indy-vdr-shared'
 
 import { verificationKeyForIndyDid } from '../dids/didIndyUtil'
-import { IndyVdrPoolService } from '../pool'
 import { getPoolService } from '../utils/pool'
 import { multiSignRequest } from '../utils/sign'
 
@@ -317,7 +316,7 @@ export class IndyVdrAnonCredsRegistry implements AnonCredsRegistry {
       // identifiers for registering, that will allow us to extract the namespace and means all stored records will use did:indy identifiers.
       const { namespaceIdentifier, namespace } = parseIndyDid(issuerId)
       const { endorserDid, endorserMode } = options.options
-      const indyVdrPoolService = agentContext.dependencyManager.resolve(IndyVdrPoolService)
+      const indyVdrPoolService = getPoolService(agentContext)
       const pool = indyVdrPoolService.getPoolForNamespace(namespace)
 
       agentContext.config.logger.debug(

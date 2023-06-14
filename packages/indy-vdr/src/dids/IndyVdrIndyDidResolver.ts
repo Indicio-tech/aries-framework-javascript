@@ -1,6 +1,9 @@
-import { IndyVdrPoolService } from '../pool'
 import type { DidResolutionResult, DidResolver, AgentContext } from '@aries-framework/core'
+
 import { parseIndyDid } from '@aries-framework/anoncreds'
+
+import { getPoolService } from '../utils/pool'
+
 import { buildDidDocument } from './didIndyUtil'
 
 export class IndyVdrIndyDidResolver implements DidResolver {
@@ -9,7 +12,7 @@ export class IndyVdrIndyDidResolver implements DidResolver {
   public async resolve(agentContext: AgentContext, did: string): Promise<DidResolutionResult> {
     const didDocumentMetadata = {}
     try {
-      const poolService = agentContext.dependencyManager.resolve(IndyVdrPoolService)
+      const poolService = getPoolService(agentContext)
       const pool = poolService.getPoolForNamespace(parseIndyDid(did).namespace)
 
       // Get DID Document from Get NYM response

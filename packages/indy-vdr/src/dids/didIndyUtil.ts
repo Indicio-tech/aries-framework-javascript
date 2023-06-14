@@ -1,5 +1,6 @@
 import type { GetNymResponseData, IndyEndpointAttrib } from './didSovUtil'
 import type { IndyVdrPool } from '../pool'
+import type { VdrPoolProxy } from '../vdrProxy'
 import type { AgentContext } from '@aries-framework/core'
 
 import { parseIndyDid } from '@aries-framework/anoncreds'
@@ -189,7 +190,7 @@ export async function verificationKeyForIndyDid(agentContext: AgentContext, did:
   return key
 }
 
-export async function getPublicDid(pool: IndyVdrPool, unqualifiedDid: string) {
+export async function getPublicDid(pool: IndyVdrPool | VdrPoolProxy, unqualifiedDid: string) {
   const request = new GetNymRequest({ dest: unqualifiedDid })
 
   const didResponse = await pool.submitRequest(request)
@@ -200,7 +201,11 @@ export async function getPublicDid(pool: IndyVdrPool, unqualifiedDid: string) {
   return JSON.parse(didResponse.result.data) as GetNymResponseData
 }
 
-export async function getEndpointsForDid(agentContext: AgentContext, pool: IndyVdrPool, unqualifiedDid: string) {
+export async function getEndpointsForDid(
+  agentContext: AgentContext,
+  pool: IndyVdrPool | VdrPoolProxy,
+  unqualifiedDid: string
+) {
   try {
     agentContext.config.logger.debug(`Get endpoints for did '${unqualifiedDid}' from ledger '${pool.indyNamespace}'`)
 
@@ -237,7 +242,7 @@ export async function getEndpointsForDid(agentContext: AgentContext, pool: IndyV
   }
 }
 
-export async function buildDidDocument(agentContext: AgentContext, pool: IndyVdrPool, did: string) {
+export async function buildDidDocument(agentContext: AgentContext, pool: IndyVdrPool | VdrPoolProxy, did: string) {
   const { namespaceIdentifier } = parseIndyDid(did)
 
   const nym = await getPublicDid(pool, namespaceIdentifier)

@@ -1,5 +1,6 @@
 import type { IndyEndpointAttrib } from './didSovUtil'
 import type { IndyVdrPool } from '../pool'
+import type { VdrPoolProxy } from '../vdrProxy'
 import type {
   AgentContext,
   Buffer,
@@ -30,7 +31,7 @@ import {
 import { AttribRequest, CustomRequest, NymRequest } from '@hyperledger/indy-vdr-shared'
 
 import { IndyVdrError } from '../error'
-import { IndyVdrPoolService } from '../pool/IndyVdrPoolService'
+import { getPoolService } from '../utils/pool'
 
 import {
   buildDidDocument,
@@ -282,7 +283,7 @@ export class IndyVdrIndyDidRegistrar implements DidRegistrar {
       const { did, namespaceIdentifier, endorserNamespaceIdentifier, verificationKey, namespace, seed, privateKey } =
         res
 
-      const pool = agentContext.dependencyManager.resolve(IndyVdrPoolService).getPoolForNamespace(namespace)
+      const pool = getPoolService(agentContext).getPoolForNamespace(namespace)
 
       let nymRequest: NymRequest | CustomRequest
       let didDocument: DidDocument | undefined
@@ -381,7 +382,7 @@ export class IndyVdrIndyDidRegistrar implements DidRegistrar {
 
   private async createRegisterDidWriteRequest(options: {
     agentContext: AgentContext
-    pool: IndyVdrPool
+    pool: IndyVdrPool | VdrPoolProxy
     submitterNamespaceIdentifier: string
     namespaceIdentifier: string
     verificationKey: Key
@@ -418,7 +419,7 @@ export class IndyVdrIndyDidRegistrar implements DidRegistrar {
 
   private async registerPublicDid<Request extends IndyVdrRequest>(
     agentContext: AgentContext,
-    pool: IndyVdrPool,
+    pool: IndyVdrPool | VdrPoolProxy,
     writeRequest: Request
   ) {
     const body = writeRequest.body
@@ -441,7 +442,7 @@ export class IndyVdrIndyDidRegistrar implements DidRegistrar {
 
   private async createSetDidEndpointsRequest(options: {
     agentContext: AgentContext
-    pool: IndyVdrPool
+    pool: IndyVdrPool | VdrPoolProxy
     signingKey: Key
     endorserDid?: string
     unqualifiedDid: string
@@ -460,7 +461,7 @@ export class IndyVdrIndyDidRegistrar implements DidRegistrar {
 
   private async setEndpointsForDid<Request extends IndyVdrRequest>(
     agentContext: AgentContext,
-    pool: IndyVdrPool,
+    pool: IndyVdrPool | VdrPoolProxy,
     writeRequest: Request
   ): Promise<void> {
     const body = writeRequest.body

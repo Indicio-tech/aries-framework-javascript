@@ -1,18 +1,18 @@
-import { parseIndyDid } from '@aries-framework/anoncreds'
+import type { AcceptanceMechanisms, AuthorAgreement, TransactionAuthorAgreement } from '../pool'
 import type { AgentContext, AgentDependencies, Key } from '@aries-framework/core'
-import {
-  GetAcceptanceMechanismsRequest,
-  GetNymResponse,
-  GetTransactionAuthorAgreementRequest,
-  indyVdr,
-  IndyVdrRequest,
-  RequestResponseType,
-} from '@hyperledger/indy-vdr-shared'
+import type { GetNymResponse, IndyVdrRequest, RequestResponseType } from '@hyperledger/indy-vdr-shared'
 import type fetch from 'node-fetch'
 import type { Response } from 'node-fetch'
-import { TypedArrayEncoder } from 'packages/core/build'
+
+import { parseIndyDid } from '@aries-framework/anoncreds'
+import { TypedArrayEncoder } from '@aries-framework/core'
+import {
+  GetAcceptanceMechanismsRequest,
+  GetTransactionAuthorAgreementRequest,
+  indyVdr,
+} from '@hyperledger/indy-vdr-shared'
+
 import { IndyVdrError } from '../error'
-import { AcceptanceMechanisms, AuthorAgreement, TransactionAuthorAgreement } from '../pool'
 
 export interface VdrPoolConfig {
   id: string
@@ -62,7 +62,7 @@ export class VdrPoolProxy {
         Accept: 'application/json',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(request),
+      body: JSON.stringify(request.body),
     })
     return JSON.parse(await response.json())
   }

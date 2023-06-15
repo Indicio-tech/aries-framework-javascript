@@ -65,9 +65,7 @@ export class VdrPoolProxy {
       body: request.body,
     })
     const json = await response.json()
-    const result = json['result']
-    const data = result['data']
-    return data
+    return json
   }
 
   public async submitWriteRequest<Request extends IndyVdrRequest>(request: Request) {

@@ -1,8 +1,9 @@
 import type { CachedDidResponse, PublicDidRequestVDR, VdrPoolConfig } from './VdrPoolProxy'
-import type { IndyVdrModuleConfig } from '../IndyVdrModuleConfig'
 import type { AgentContext } from '@aries-framework/core'
 import type { IndyVdrRequest } from '@hyperledger/indy-vdr-shared'
+import type fetch from 'node-fetch'
 
+import { didIndyRegex } from '@aries-framework/anoncreds'
 import {
   CacheModuleConfig,
   AgentDependencies,
@@ -11,11 +12,12 @@ import {
   injectable,
   inject,
 } from '@aries-framework/core'
-import { allSettled, onlyFulfilled, onlyRejected } from '@aries-framework/core/src/utils/promises'
 import { GetNymRequest } from '@hyperledger/indy-vdr-shared'
 
+import { IndyVdrModuleConfig } from '../IndyVdrModuleConfig'
 import { IndyVdrError, IndyVdrNotFoundError } from '../error'
-import { isSelfCertifiedDid, DID_INDY_REGEX } from '../utils/did'
+import { isSelfCertifiedDid } from '../utils/did'
+import { allSettled, onlyFulfilled, onlyRejected } from '../utils/promises'
 
 import { VdrPoolProxy } from './VdrPoolProxy'
 
@@ -23,26 +25,23 @@ import { VdrPoolProxy } from './VdrPoolProxy'
 export class IndyVDRProxyService {
   private logger: Logger
   private pools: VdrPoolProxy[] = []
-  private agentDependencies: AgentDependencies
-  private config: IndyVdrModuleConfig
+  private fetch: typeof fetch
 
   public constructor(
-    @inject(InjectionSymbols.AgentDependencies) agentDependencies: AgentDependencies,
     @inject(InjectionSymbols.Logger) logger: Logger,
-    IndyVdrModuleConfig: IndyVdrModuleConfig
+    @inject(InjectionSymbols.AgentDependencies) agentDependencies: AgentDependencies,
+    indyVdrModuleConfig: IndyVdrModuleConfig
   ) {
     this.logger = logger
-    this.setPools(IndyVdrModuleConfig.proxyNetworks)
-    this.agentDependencies = agentDependencies
-    this.config = IndyVdrModuleConfig
+    this.fetch = agentDependencies.fetch
+    this.setPools(indyVdrModuleConfig.proxyNetworks)
   }
 
   public setPools(poolsConfigs: VdrPoolConfig[] | undefined) {
     if (poolsConfigs) {
-      const pools = poolsConfigs.map((config) => {
-        return new VdrPoolProxy(this.agentDependencies, config)
+      poolsConfigs.forEach((config) => {
+        this.pools.push(new VdrPoolProxy(this.fetch, config))
       })
-      this.pools = pools
     }
   }
 
@@ -80,11 +79,13 @@ export class IndyVDRProxyService {
     const cacheKey = `IndyVdrProxyService:${did}`
 
     const cachedNymResponse = await cache.get<CachedDidResponse>(agentContext, cacheKey)
-    const pool = this.pools.find((pool) => pool.indyNamespace === cachedNymResponse?.indyNamespace)
+    if (cachedNymResponse !== null) {
+      const pool = this.pools.find((pool) => pool.indyNamespace === cachedNymResponse?.indyNamespace)
 
-    if (cachedNymResponse && pool) {
-      this.logger.trace(`Found ledger id '${pool.id}' for did '${did}' in cache`)
-      return { nymResponse: cachedNymResponse.nymResponse, pool }
+      if (pool) {
+        this.logger.trace(`Found ledger id '${pool.id}' for did '${did}' in cache`)
+        return { nymResponse: cachedNymResponse.nymResponse, pool }
+      }
     }
 
     const { successful, rejected } = await this.getSettledDidResponsesFromPools(did, pools)
@@ -162,7 +163,7 @@ export class IndyVDRProxyService {
     did: string
   ): Promise<{ pool: VdrPoolProxy; nymResponse?: CachedDidResponse['nymResponse'] }> {
     // Check if the did starts with did:indy
-    const match = did.match(DID_INDY_REGEX)
+    const match = did.match(didIndyRegex)
 
     if (match) {
       const [, namespace] = match

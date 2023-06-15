@@ -34,8 +34,8 @@ export class VdrPoolProxy {
   private poolConfig: VdrPoolConfig
   private fetch: typeof fetch
   public authorAgreement?: AuthorAgreement | null
-  public constructor(agentDependencies: AgentDependencies, poolConfig: VdrPoolConfig) {
-    this.fetch = agentDependencies.fetch
+  public constructor(_fetch: typeof fetch, poolConfig: VdrPoolConfig) {
+    this.fetch = _fetch
     this.poolConfig = poolConfig
   }
 
@@ -62,9 +62,12 @@ export class VdrPoolProxy {
         Accept: 'application/json',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(request.body),
+      body: request.body,
     })
-    return JSON.parse(await response.json())
+    const json = await response.json()
+    const result = json['result']
+    const data = result['data']
+    return data
   }
 
   public async submitWriteRequest<Request extends IndyVdrRequest>(request: Request) {

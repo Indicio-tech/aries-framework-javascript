@@ -60,6 +60,7 @@ export interface IndyVdrModuleConfigOptions {
   networks: [IndyVdrPoolConfig, ...IndyVdrPoolConfig[]]
 
   proxyNetworks?: [VdrPoolConfig, ...VdrPoolConfig[]]
+  useProxy?: boolean
 }
 
 export class IndyVdrModuleConfig {
@@ -84,6 +85,7 @@ export class IndyVdrModuleConfig {
   }
 
   public get useProxy() {
-    return this.options.proxyNetworks !== undefined
+    if (this.options.useProxy !== undefined) return this.options.useProxy
+    return false
   }
 }

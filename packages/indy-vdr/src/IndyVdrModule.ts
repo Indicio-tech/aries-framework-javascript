@@ -35,8 +35,8 @@ export class IndyVdrModule implements Module {
       dependencyManager.registerSingleton(IndyVDRProxyService)
     } else {
       dependencyManager.registerSingleton(IndyVdrPoolService)
-      dependencyManager.registerContextScoped(IndyVdrApi)
     }
+    dependencyManager.registerContextScoped(IndyVdrApi)
   }
 
   public async initialize(agentContext: AgentContext): Promise<void> {

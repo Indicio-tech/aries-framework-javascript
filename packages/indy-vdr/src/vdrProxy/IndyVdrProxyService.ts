@@ -1,4 +1,5 @@
 import type { CachedDidResponse, PublicDidRequestVDR, VdrPoolConfig } from './VdrPoolProxy'
+import type { AllSettledFulfilled, AllSettledRejected } from '../utils/promises'
 import type { AgentContext } from '@aries-framework/core'
 import type { IndyVdrRequest } from '@hyperledger/indy-vdr-shared'
 import type fetch from 'node-fetch'
@@ -17,7 +18,6 @@ import { GetNymRequest } from '@hyperledger/indy-vdr-shared'
 import { IndyVdrModuleConfig } from '../IndyVdrModuleConfig'
 import { IndyVdrError, IndyVdrNotFoundError } from '../error'
 import { isSelfCertifiedDid } from '../utils/did'
-import { allSettled, onlyFulfilled, onlyRejected } from '../utils/promises'
 
 import { VdrPoolProxy } from './VdrPoolProxy'
 
@@ -79,13 +79,12 @@ export class IndyVDRProxyService {
     const cacheKey = `IndyVdrProxyService:${did}`
 
     const cachedNymResponse = await cache.get<CachedDidResponse>(agentContext, cacheKey)
-    if (cachedNymResponse !== null) {
-      const pool = this.pools.find((pool) => pool.indyNamespace === cachedNymResponse?.indyNamespace)
 
-      if (pool) {
-        this.logger.trace(`Found ledger id '${pool.id}' for did '${did}' in cache`)
-        return { nymResponse: cachedNymResponse.nymResponse, pool }
-      }
+    const pool = this.pools.find((pool) => pool.indyNamespace === cachedNymResponse?.indyNamespace)
+
+    if (cachedNymResponse && pool) {
+      this.logger.trace(`Found ledger id '${pool.id}' for did '${did}' in cache`)
+      return { nymResponse: cachedNymResponse.nymResponse, pool }
     }
 
     const { successful, rejected } = await this.getSettledDidResponsesFromPools(did, pools)
@@ -138,12 +137,19 @@ export class IndyVDRProxyService {
 
   private async getSettledDidResponsesFromPools(did: string, pools: VdrPoolProxy[]) {
     this.logger.trace(`Retrieving did '${did}' from ${pools.length} ledgers`)
-    const didResponses = await allSettled(pools.map((pool) => this.getDidFromPool(did, pool)))
 
-    const successful = onlyFulfilled(didResponses)
+    const successful: Array<AllSettledFulfilled<PublicDidRequestVDR>> = []
+    const rejected: Array<AllSettledRejected> = []
+    for (let i = 0; i < pools.length; i++) {
+      try {
+        const response = await this.getDidFromPool(did, pools[i])
+        successful.push({ status: 'fulfilled', value: response })
+      } catch (error) {
+        rejected.push({ status: 'rejected', reason: error.message })
+      }
+    }
+
     this.logger.trace(`Retrieved ${successful.length} responses from ledgers for did '${did}'`)
-
-    const rejected = onlyRejected(didResponses)
 
     return { successful: successful, rejected: rejected }
   }

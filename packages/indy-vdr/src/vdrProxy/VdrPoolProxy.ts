@@ -1,5 +1,5 @@
 import type { AcceptanceMechanisms, AuthorAgreement, TransactionAuthorAgreement } from '../pool'
-import type { AgentContext, AgentDependencies, Key } from '@aries-framework/core'
+import type { AgentContext, Key } from '@aries-framework/core'
 import type { GetNymResponse, IndyVdrRequest, RequestResponseType } from '@hyperledger/indy-vdr-shared'
 import type fetch from 'node-fetch'
 import type { Response } from 'node-fetch'
@@ -48,11 +48,11 @@ export class VdrPoolProxy {
   }
 
   public get config(): VdrPoolConfig {
-    return this.config
+    return this.poolConfig
   }
 
   public get indyNamespace(): string {
-    return this.config.indyNamespace
+    return this.poolConfig.indyNamespace
   }
 
   public async submitRequest<Request extends IndyVdrRequest>(request: Request): Promise<RequestResponseType<Request>> {

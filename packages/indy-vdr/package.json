@@ -2,7 +2,7 @@
   "name": "@aries-framework/indy-vdr",
   "main": "build/index",
   "types": "build/index",
-  "version": "0.4.0-proxy.0.3",
+  "version": "0.4.0-proxy.0.6",
   "files": [
     "build"
   ],

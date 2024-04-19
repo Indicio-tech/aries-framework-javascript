@@ -9,6 +9,7 @@ import type {
   W3cJsonLdVerifyPresentationOptions,
 } from '../W3cCredentialServiceOptions'
 import type { W3cVerifyCredentialResult, W3cVerifyPresentationResult } from '../models'
+import type { W3cJsonCredential } from '../models/credential/W3cJsonCredential'
 
 import { createWalletKeyPairClass } from '../../../crypto/WalletKeyPair'
 import { AriesFrameworkError } from '../../../error'
@@ -108,11 +109,10 @@ export class W3cJsonLdCredentialService {
         credential: JsonTransformer.toJSON(options.credential),
         suite: suites,
         documentLoader: this.w3cCredentialsModuleConfig.documentLoader(agentContext),
-        checkStatus: () => {
-          if (verifyCredentialStatus) {
-            throw new AriesFrameworkError(
-              'Verifying credential status for JSON-LD credentials is currently not supported'
-            )
+        checkStatus: ({ credential }: { credential: W3cJsonCredential }) => {
+          // Only throw error if credentialStatus is present
+          if (verifyCredentialStatus && 'credentialStatus' in credential) {
+            throw new AriesFrameworkError('Verifying credential status for JSON-LD credentials is currently not supported')
           }
           return {
             verified: true,
@@ -128,6 +128,12 @@ export class W3cJsonLdCredentialService {
       const result = await vc.verifyCredential(verifyOptions)
 
       const { verified: isValid, ...remainingResult } = result
+
+      if (!isValid) {
+        agentContext.config.logger.debug(`Credential verification failed: ${result.error?.message}`, {
+          stack: result.error?.stack,
+        })
+      }
 
       // We map the result to our own result type to make it easier to work with
       // however, for now we just add a single vcJs validation result as we don't
@@ -316,16 +322,6 @@ export class W3cJsonLdCredentialService {
 
   public getKeyTypesByProofType(proofType: string): string[] {
     return this.signatureSuiteRegistry.getByProofType(proofType).keyTypes
-  }
-
-  public getProofTypeByVerificationMethodType(verificationMethodType: string): string {
-    const suite = this.signatureSuiteRegistry.getByVerificationMethodType(verificationMethodType)
-
-    if (!suite) {
-      throw new AriesFrameworkError(`No suite found for verification method type ${verificationMethodType}}`)
-    }
-
-    return suite.proofType
   }
 
   public async getExpandedTypesForCredential(agentContext: AgentContext, credential: W3cJsonLdVerifiableCredential) {

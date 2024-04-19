@@ -19,20 +19,23 @@ export interface SuiteInfo {
 export class SignatureSuiteRegistry {
   private suiteMapping: SuiteInfo[]
 
-  public constructor(@injectAll(SignatureSuiteToken) suites: SuiteInfo[]) {
-    this.suiteMapping = suites
+  public constructor(@injectAll(SignatureSuiteToken) suites: Array<SuiteInfo | 'default'>) {
+    this.suiteMapping = suites.filter((suite): suite is SuiteInfo => suite !== 'default')
   }
 
   public get supportedProofTypes(): string[] {
     return this.suiteMapping.map((x) => x.proofType)
   }
 
+  /**
+   * @deprecated recommended to always search by key type instead as that will have broader support
+   */
   public getByVerificationMethodType(verificationMethodType: string) {
     return this.suiteMapping.find((x) => x.verificationMethodTypes.includes(verificationMethodType))
   }
 
-  public getByKeyType(keyType: KeyType) {
-    return this.suiteMapping.find((x) => x.keyTypes.includes(keyType))
+  public getAllByKeyType(keyType: KeyType) {
+    return this.suiteMapping.filter((x) => x.keyTypes.includes(keyType))
   }
 
   public getByProofType(proofType: string) {

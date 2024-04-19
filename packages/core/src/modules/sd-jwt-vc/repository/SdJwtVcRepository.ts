@@ -4,14 +4,14 @@ import { inject, injectable } from '../../../plugins'
 import { Repository } from '../../../storage/Repository'
 import { StorageService } from '../../../storage/StorageService'
 
-import { W3cCredentialRecord } from './W3cCredentialRecord'
+import { SdJwtVcRecord } from './SdJwtVcRecord'
 
 @injectable()
-export class W3cCredentialRepository extends Repository<W3cCredentialRecord> {
+export class SdJwtVcRepository extends Repository<SdJwtVcRecord> {
   public constructor(
-    @inject(InjectionSymbols.StorageService) storageService: StorageService<W3cCredentialRecord>,
+    @inject(InjectionSymbols.StorageService) storageService: StorageService<SdJwtVcRecord>,
     eventEmitter: EventEmitter
   ) {
-    super(W3cCredentialRecord, storageService, eventEmitter)
+    super(SdJwtVcRecord, storageService, eventEmitter)
   }
 }

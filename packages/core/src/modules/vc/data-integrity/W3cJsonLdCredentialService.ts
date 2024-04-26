@@ -112,7 +112,9 @@ export class W3cJsonLdCredentialService {
         checkStatus: ({ credential }: { credential: W3cJsonCredential }) => {
           // Only throw error if credentialStatus is present
           if (verifyCredentialStatus && 'credentialStatus' in credential) {
-            throw new AriesFrameworkError('Verifying credential status for JSON-LD credentials is currently not supported')
+            throw new AriesFrameworkError(
+              'Verifying credential status for JSON-LD credentials is currently not supported'
+            )
           }
           return {
             verified: true,

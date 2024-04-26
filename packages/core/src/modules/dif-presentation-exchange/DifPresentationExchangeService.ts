@@ -70,6 +70,8 @@ export class DifPresentationExchangeService {
     presentationDefinition: DifPresentationExchangeDefinition
   ): Promise<DifPexCredentialsForRequest> {
     const credentialRecords = await this.queryCredentialForPresentationDefinition(agentContext, presentationDefinition)
+    // eslint-disable-next-line no-console
+    console.log(`The credentials found for the presentation are: ${JSON.stringify(credentialRecords)}`)
     return getCredentialsForRequest(this.pex, presentationDefinition, credentialRecords)
   }
 
@@ -510,7 +512,9 @@ export class DifPresentationExchangeService {
         const sdJwtInput = presentationInput as SdJwtDecodedVerifiableCredentialWithKbJwtInput
 
         if (!domain) {
-          throw new AriesFrameworkError("Missing 'domain' property, unable to set required 'aud' property in SD-JWT KB-JWT")
+          throw new AriesFrameworkError(
+            "Missing 'domain' property, unable to set required 'aud' property in SD-JWT KB-JWT"
+          )
         }
 
         const sdJwtVcApi = this.getSdJwtVcApi(agentContext)

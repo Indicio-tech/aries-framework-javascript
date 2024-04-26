@@ -20,7 +20,9 @@ export function transformToRecordTagValues(tags: Record<string, unknown>): TagsB
     // If the value is a boolean string ('1' or '0')
     // use the boolean val
     if (value === '1' && key?.includes(':')) {
-      const [tagName, tagValue] = key.split(':')
+      const [tagName, ...tagValues] = key.split(':')
+      //If the tag is a url or includes the ":" character information is lost
+      const tagValue = tagValues.join(':')
 
       const transformedValue = transformedTags[tagName]
 

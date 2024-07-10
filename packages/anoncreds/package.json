@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "@astronautlabs/jsonpath": "^1.1.2",
-    "@credo-ts/core": "file:../.././credo-ts-core-v0.5.3-jsonld.tgz",
+    "@credo-ts/core": "file:../../.././credo-ts-core-v0.5.3-revocation.tgz",
     "big-integer": "^1.6.51",
     "bn.js": "^5.2.1",
     "class-transformer": "0.5.1",

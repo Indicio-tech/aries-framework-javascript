@@ -17,6 +17,7 @@ import {
   getIndyNamespaceFromIndyDid,
   getQualifiedDidIndyDid,
   getUnqualifiedRevocationRegistryDefinitionId,
+  getUnQualifiedDidIndyDid,
   isIndyDid,
   isUnqualifiedCredentialDefinitionId,
   isUnqualifiedIndyDid,
@@ -145,6 +146,14 @@ async function migrateLegacyToW3cCredential(agentContext: AgentContext, legacyRe
   const [relatedCredentialExchangeRecord] = await credentialExchangeRepository.findByQuery(agentContext, {
     credentialIds: [legacyRecord.credentialId],
   })
+
+  // The issuer of the schema does not always match the issuer of the credential definition thus the unqualified schema id needs to be derived from both values
+  function getUnqualifiedSchemaId(schemaIssuerId: string, schemaId: string) {
+  const schemaDid = schemaIssuerId.split(':')[3]
+  const split = getUnQualifiedDidIndyDid(schemaId).split(':')
+  split[0] = schemaDid
+  return split.join(':')
+}
 
   if (relatedCredentialExchangeRecord) {
     // Replace the related binding by the new one

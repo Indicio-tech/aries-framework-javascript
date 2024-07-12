@@ -231,6 +231,7 @@ export class V1CredentialProtocol
       await connectionService.assertConnectionOrOutOfBandExchange(messageContext, {
         lastReceivedMessage,
         lastSentMessage,
+        expectedConnectionId: credentialRecord.connectionId,
       })
 
       await this.indyCredentialFormat.processProposal(messageContext.agentContext, {
@@ -251,7 +252,8 @@ export class V1CredentialProtocol
       })
     } else {
       agentContext.config.logger.debug('Credential record does not exists yet for incoming proposal')
-
+      // Assert
+      await connectionService.assertConnectionOrOutOfBandExchange(messageContext)
       // No credential record exists with thread id
       credentialRecord = new CredentialExchangeRecord({
         connectionId: connection?.id,

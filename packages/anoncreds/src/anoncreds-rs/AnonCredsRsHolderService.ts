@@ -733,7 +733,6 @@ export class AnonCredsRsHolderService implements AnonCredsHolderService {
         if (isUnqualifiedIndyDid(issuerId)) {
           queryElements.anonCredsUnqualifiedIssuerId = issuerId
         } else {
-          queryElements.anonCredsIssuerId = issuerId
           queryElements.issuerId = issuerId
         }
       }

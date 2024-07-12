@@ -64,7 +64,7 @@ function anonCredsCredentialInfoFromW3cRecord(
   )
   if (!anonCredsCredentialMetadata) throw new CredoError('AnonCreds metadata not found on credential record.')
 
-    const credentialDefinitionId =
+  const credentialDefinitionId =
     useUnqualifiedIdentifiers && anonCredsTags.anonCredsUnqualifiedCredentialDefinitionId
       ? anonCredsTags.anonCredsUnqualifiedCredentialDefinitionId
       : anonCredsTags.anonCredsCredentialDefinitionId
@@ -78,7 +78,6 @@ function anonCredsCredentialInfoFromW3cRecord(
     useUnqualifiedIdentifiers && anonCredsTags.anonCredsUnqualifiedRevocationRegistryId
       ? anonCredsTags.anonCredsUnqualifiedRevocationRegistryId
       : anonCredsTags.anonCredsRevocationRegistryId ?? null
-
 
   return {
     attributes: (w3cCredentialRecord.credential.credentialSubject.claims as AnonCredsClaimRecord) ?? {},
@@ -223,7 +222,7 @@ export function getW3cRecordAnonCredsTags(options: {
     ...((isIndyDid(issuerId) || isUnqualifiedIndyDid(issuerId)) && {
       anonCredsUnqualifiedIssuerId: getUnQualifiedDidIndyDid(issuerId),
       anonCredsUnqualifiedCredentialDefinitionId: getUnQualifiedDidIndyDid(credentialDefinitionId),
-      anonCredsUnqualifiedSchemaId: getUnQualifiedDidIndyDid(schema.issuerId),
+      anonCredsUnqualifiedSchemaId: getUnQualifiedDidIndyDid(issuerId),
       anonCredsUnqualifiedSchemaIssuerId: getUnQualifiedDidIndyDid(schema.issuerId),
       anonCredsUnqualifiedRevocationRegistryId: revocationRegistryId
         ? getUnQualifiedDidIndyDid(revocationRegistryId)

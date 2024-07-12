@@ -263,9 +263,6 @@ export class V1CredentialProtocol
         protocolVersion: 'v1',
       })
 
-      // Assert
-      await connectionService.assertConnectionOrOutOfBandExchange(messageContext)
-
       // Save record
       await credentialRepository.save(messageContext.agentContext, credentialRecord)
       this.emitStateChangedEvent(messageContext.agentContext, credentialRecord, null)
@@ -534,6 +531,7 @@ export class V1CredentialProtocol
       await connectionService.assertConnectionOrOutOfBandExchange(messageContext, {
         lastReceivedMessage,
         lastSentMessage,
+        expectedConnectionId: credentialRecord.connectionId,
       })
 
       await this.indyCredentialFormat.processOffer(messageContext.agentContext, {
@@ -550,6 +548,9 @@ export class V1CredentialProtocol
 
       return credentialRecord
     } else {
+      // Assert
+      await connectionService.assertConnectionOrOutOfBandExchange(messageContext)
+
       // No credential record exists with thread id
       credentialRecord = new CredentialExchangeRecord({
         connectionId: connection?.id,
@@ -559,9 +560,6 @@ export class V1CredentialProtocol
         role: CredentialRole.Holder,
         protocolVersion: 'v1',
       })
-
-      // Assert
-      await connectionService.assertConnectionOrOutOfBandExchange(messageContext)
 
       await this.indyCredentialFormat.processOffer(messageContext.agentContext, {
         credentialRecord,
@@ -769,6 +767,7 @@ export class V1CredentialProtocol
     await connectionService.assertConnectionOrOutOfBandExchange(messageContext, {
       lastReceivedMessage: proposalMessage ?? undefined,
       lastSentMessage: offerMessage ?? undefined,
+      expectedConnectionId: credentialRecord.connectionId,
     })
 
     // This makes sure that the sender of the incoming message is authorized to do so.
@@ -776,7 +775,6 @@ export class V1CredentialProtocol
       await connectionService.matchIncomingMessageToRequestMessageInOutOfBandExchange(messageContext, {
         expectedConnectionId: credentialRecord.connectionId,
       })
-
       credentialRecord.connectionId = connection?.id
     }
 
@@ -918,6 +916,7 @@ export class V1CredentialProtocol
     await connectionService.assertConnectionOrOutOfBandExchange(messageContext, {
       lastReceivedMessage: offerCredentialMessage,
       lastSentMessage: requestCredentialMessage,
+      expectedConnectionId: credentialRecord.connectionId,
     })
 
     const issueAttachment = issueMessage.getCredentialAttachmentById(INDY_CREDENTIAL_ATTACHMENT_ID)
@@ -1024,6 +1023,7 @@ export class V1CredentialProtocol
     await connectionService.assertConnectionOrOutOfBandExchange(messageContext, {
       lastReceivedMessage: requestCredentialMessage,
       lastSentMessage: issueCredentialMessage,
+      expectedConnectionId: credentialRecord.connectionId,
     })
 
     // Update record

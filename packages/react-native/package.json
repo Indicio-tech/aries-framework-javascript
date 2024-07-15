@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "@azure/core-asynciterator-polyfill": "^1.0.2",
-    "@credo-ts/core": "file:../../.././credo-ts-core-v0.5.3-revocation.tgz",
+    "@credo-ts/core": "0.5.3",
     "events": "^3.3.0"
   },
   "devDependencies": {

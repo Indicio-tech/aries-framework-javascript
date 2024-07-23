@@ -2,70 +2,202 @@ name: Continuous Integration
 
 on:
   pull_request:
-    branches: [main]
+    branches:
+      - main
+      - '**-pre'
+    types: [opened, synchronize, reopened, labeled]
   push:
-    branches: [main]
+    branches:
+      - main
+      - '**-pre'
+  workflow_dispatch:
 
 env:
-  TEST_AGENT_PUBLIC_DID_SEED: 000000000000000000000000Trustee9
-  GENESIS_TXN_PATH: network/genesis/local-genesis.txn
+  NODE_OPTIONS: --max_old_space_size=6144
+
+# Make sure we're not running multiple release steps at the same time as this can give issues with determining the next npm version to release.
+# Ideally we only add this to the 'release' job so it doesn't limit PR runs, but github can't guarantee the job order in that case:
+# "When concurrency is specified at the job level, order is not guaranteed for jobs or runs that queue within 5 minutes of each other."
+concurrency:
+  # Cancel previous runs that are not completed yet
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  integration-test:
-    runs-on: ubuntu-18.04
-    name: Integration Tests
+  # PRs created by github actions won't trigger CI. Before we can merge a PR we need to run the tests and
+  # validation scripts. To still be able to run the CI we can manually trigger it by adding the 'ci-test'
+  # label to the pull request
+  ci-trigger:
+    runs-on: ubuntu-20.04
+    outputs:
+      triggered: ${{ steps.check.outputs.triggered }}
     steps:
-      - name: Checkout aries-framework-javascript
-        uses: actions/checkout@v2
-
-      - name: Get docker cache
-        uses: satackey/action-docker-layer-caching@v0.0.11
-
-      - name: Start indy pool
+      - name: Determine if CI should run
+        id: check
         run: |
-          docker build -f network/indy-pool.dockerfile -t indy-pool .
-          docker run -d --name indy-pool -p 9701-9708:9701-9708 indy-pool
-          docker exec indy-pool indy-cli-setup
+          if [[ "${{ github.event.action }}" == "labeled" && "${{ github.event.label.name }}" == "ci-test" ]]; then
+              export SHOULD_RUN='true'
+          elif [[ "${{ github.event.action }}" == "labeled" && "${{ github.event.label.name }}" != "ci-test" ]]; then
+              export SHOULD_RUN='false'
+          else
+              export SHOULD_RUN='true'
+          fi
 
-      - name: Register DID on ledger
-        run: docker exec indy-pool add-did-from-seed "${TEST_AGENT_PUBLIC_DID_SEED}"
+          echo "SHOULD_RUN: ${SHOULD_RUN}"
+          echo triggered="${SHOULD_RUN}" >> "$GITHUB_OUTPUT"
 
-      - name: Build framework docker image
-        run: docker build -t aries-framework-javascript .
+  validate:
+    runs-on: ubuntu-20.04
+    name: Validate
+    steps:
+      - name: Checkout credo-ts
+        uses: actions/checkout@v4
 
-      - name: Run lint and format validation
-        run: docker run aries-framework-javascript yarn validate
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9.1.0
 
-      - name: Start mediator agents
-        run: docker-compose -f docker/docker-compose-mediators.yml up -d
+      - name: Setup NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Linting
+        run: pnpm lint
+
+      - name: Prettier
+        run: pnpm check-format
+
+      - name: Check Types
+        run: pnpm check-types
+
+      - name: Compile
+        run: pnpm build
+
+  unit-tests:
+    runs-on: ubuntu-20.04
+    name: Unit Tests
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20]
+        # Each shard runs a set of the tests
+        # Make sure to UPDATE THE TEST command with the total length of
+        # the shards if you change this!!
+        shard: [1, 2]
+
+    steps:
+      - name: Checkout credo
+        uses: actions/checkout@v4
+
+      - name: Setup NodeJS
+        id: setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9.1.0
+
+      # See https://github.com/actions/setup-node/issues/641#issuecomment-1358859686
+      - name: pnpm cache path
+        id: pnpm-cache-path
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.pnpm-cache-path.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-${{ steps.setup-node.outputs.node-version }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ steps.setup-node.outputs.node-version }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Run tests
-        run: >-
-          docker run 
-          --network host
-          --name framework-jest-tests 
-          --env TEST_AGENT_PUBLIC_DID_SEED=${TEST_AGENT_PUBLIC_DID_SEED}
-          --env GENESIS_TXN_PATH=${GENESIS_TXN_PATH}
-          aries-framework-javascript 
-          yarn test --coverage
+        run: pnpm test:unit --coverage --forceExit --shard=${{ matrix.shard }}/2
 
-      - name: Export logs
-        if: always()
-        run: |
-          mkdir logs
-          docker cp alice-mediator:/www/logs.txt ./logs/alice-mediator.txt
-          docker cp bob-mediator:/www/logs.txt ./logs/bob-mediator.txt
-          docker cp framework-jest-tests:/www/logs.txt ./logs/jest.txt
-
-      - name: Upload docker logs
-        uses: actions/upload-artifact@v1
-        if: always()
+      # Upload coverage for shard
+      - run: mv coverage/coverage-final.json coverage/${{ matrix.shard }}.json
+      - uses: actions/upload-artifact@v4
         with:
-          name: docker-logs
-          path: logs
+          name: coverage-artifacts
+          path: coverage/${{ matrix.shard }}.json
+          overwrite: true
 
-      - name: Export test coverage
-        if: always()
-        run: docker cp framework-jest-tests:/www/coverage ./
-      - uses: codecov/codecov-action@v1
-        if: always()
+  e2e-tests:
+    runs-on: ubuntu-20.04
+    name: E2E Tests
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20]
+
+    steps:
+      - name: Checkout credo
+        uses: actions/checkout@v4
+
+      # setup dependencies
+      - name: Setup services
+        run: docker compose up -d
+
+      - name: Setup NodeJS
+        id: setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9.1.0
+
+      # See https://github.com/actions/setup-node/issues/641#issuecomment-1358859686
+      - name: pnpm cache path
+        id: pnpm-cache-path
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.pnpm-cache-path.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-${{ steps.setup-node.outputs.node-version }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ steps.setup-node.outputs.node-version }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test:e2e --coverage --forceExit
+
+      # Upload coverage for e2e
+      - run: mv coverage/coverage-final.json coverage/e2e.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-artifacts
+          path: coverage/e2e.json
+          overwrite: true
+
+  # Upload all the coverage reports
+  report-coverage:
+    runs-on: ubuntu-20.04
+    needs: [e2e-tests, unit-tests]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: coverage-artifacts
+          path: coverage
+
+      - uses: codecov/codecov-action@v4
+        with:
+          directory: coverage

@@ -1,0 +1,40 @@
+import type { CheqdModuleConfigOptions } from './CheqdModuleConfig'
+import type { AgentContext, DependencyManager, Module } from '@credo-ts/core'
+
+import { AgentConfig, Buffer } from '@credo-ts/core'
+
+import { CheqdModuleConfig } from './CheqdModuleConfig'
+import { CheqdLedgerService } from './ledger'
+
+export class CheqdModule implements Module {
+  public readonly config: CheqdModuleConfig
+
+  public constructor(config: CheqdModuleConfigOptions) {
+    this.config = new CheqdModuleConfig(config)
+  }
+
+  public register(dependencyManager: DependencyManager) {
+    // Warn about experimental module
+    dependencyManager
+      .resolve(AgentConfig)
+      .logger.warn(
+        "The '@credo-ts/cheqd' module is experimental and could have unexpected breaking changes. When using this module, make sure to use strict versions for all @credo-ts packages."
+      )
+
+    // Register config
+    dependencyManager.registerInstance(CheqdModuleConfig, this.config)
+
+    dependencyManager.registerSingleton(CheqdLedgerService)
+
+    // Cheqd module needs Buffer to be available globally
+    // If it is not available yet, we overwrite it with the
+    // Buffer implementation from Credo
+    global.Buffer = global.Buffer || Buffer
+  }
+
+  public async initialize(agentContext: AgentContext): Promise<void> {
+    // not required
+    const cheqdLedgerService = agentContext.dependencyManager.resolve(CheqdLedgerService)
+    await cheqdLedgerService.connect()
+  }
+}

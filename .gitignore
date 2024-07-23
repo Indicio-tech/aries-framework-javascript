@@ -1,10 +1,11 @@
 node_modules
 build
 .vscode
-yarn-error.log
 .idea
-aries-framework-javascript-*.tgz
-src/lib/__tests__/genesis-von.txn
+credo-*.tgz
+# Keeping this one in for now to prevent accidental
+# old build still in the local repository getting pushed
+aries-framework-*.tgz
 coverage
 .DS_Store
 logs.txt

@@ -1,11 +1,12 @@
 #!/bin/bash
 
-export SEED=${1?"Seed missing\nUsage: $0 SEED"}
+export SEED=${1?"Seed missing\nUsage: $0 SEED ROLE"}
+export ROLE=$2
 
 echo "
-wallet open afj-wallet key=password
+wallet open credo-wallet key=password
 
-pool connect afj-pool
+pool connect credo-pool
 
 did new seed=${SEED}" >/etc/indy/command.txt
 
@@ -15,4 +16,4 @@ IFS='"' read -r -a DID_PARTS <<<"$DID_STRING"
 export DID=${DID_PARTS[1]}
 export VERKEY=${DID_PARTS[3]}
 
-add-did "$DID" "$VERKEY"
+add-did "$DID" "$VERKEY" "$ROLE"

@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.build.json",
+  "compilerOptions": {
+    "outDir": "./build",
+    "baseUrl": ".",
+    "skipDefaultLibCheck": true,
+    "paths": {
+      "@credo-ts/*": ["../*/src"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["../core"]
+}

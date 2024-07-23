@@ -1,0 +1,12 @@
+{
+  "image": "node:18",
+  "runArgs": ["--env-file", ".devcontainer/devcontainer.env"],
+  "workspaceMount": "source=${localWorkspaceFolder},target=/work,type=bind",
+  "workspaceFolder": "/work",
+  "customizations": {
+    "vscode": {
+      "extensions": ["esbenp.prettier-vscode"]
+    }
+  },
+  "postCreateCommand": "pnpm install"
+}
